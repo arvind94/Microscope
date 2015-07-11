@@ -1,0 +1,34 @@
+<template name="Profile1">
+	<div class="col-md-4 push-down">
+		<div class="panel panel-default">
+			<div class="panel-heading">
+				<h3 class="panel-title">Uploads Section</h3>
+			</div>
+			<div class="panel-body">
+				<p>
+					Add Files
+					<span class="btn btn-default btn-file">
+						<input multiple class="file fileInput" type="file"/>
+					</span>
+				</p>
+
+			</div>
+			<table class="table table-hover table-striped table-bordered">
+				<thead>
+					<th>Name</th>
+					<th>Download</th>
+				</thead>
+				<tbody>
+				{{#each uploads}}
+					<tr>
+						<td>{{name}}</td>
+						<td>
+							<a class="btn btn-primary" href="{{url download=true}}">Download</a>
+						</td>
+					</tr>
+				{{/each}}
+				</tbody>
+			</table>
+		</div>
+	</div>
+</template>

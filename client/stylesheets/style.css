@@ -19,7 +19,8 @@ border-radius: 0px 0px 3px 3px; } #spinner {
 height: 300px; }
 .post {
 /* For modern browsers */
-/* For IE 6/7 (trigger hasLayout) */ *zoom: 1;
+/* For IE 6/7 (trigger hasLayout) */ 
+zoom: 1;
 position: relative;
 opacity: 1; }
 .post:before, .post:after {
@@ -85,3 +86,6 @@ bottom: 0px; pointer-events: none;
 animation: fadeOut 2700ms ease-in 0s 1 forwards; -webkit-animation: fadeOut 2700ms ease-in 0s 1 forwards; -moz-animation: fadeOut 2700ms ease-in 0s 1 forwards;
 width: 250px; float: right; clear: both; margin-bottom: 5px;
 pointer-events: auto; }
+.push-down{
+	margin-top: 25px;
+}

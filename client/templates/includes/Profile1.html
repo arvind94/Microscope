@@ -1,4 +1,5 @@
 <template name="Profile1">
+	{{#if currentUser}}
 	<div class="col-md-4 push-down">
 		<div class="panel panel-default">
 			<div class="panel-heading">
@@ -11,7 +12,6 @@
 						<input multiple class="file fileInput" type="file"/>
 					</span>
 				</p>
-
 			</div>
 			<table class="table table-hover table-striped table-bordered">
 				<thead>
@@ -20,15 +20,18 @@
 				</thead>
 				<tbody>
 				{{#each uploads}}
+				{{#if ownUpload}}
 					<tr>
 						<td>{{name}}</td>
 						<td>
-							<a class="btn btn-primary" href="{{url download=true}}">Download</a>
+							<a target="_blank" class="btn btn-primary" href="{{url download=true}}">Download</a>
 						</td>
 					</tr>
+				{{/if}}
 				{{/each}}
 				</tbody>
 			</table>
 		</div>
 	</div>
+	{{/if}}
 </template>

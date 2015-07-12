@@ -6,3 +6,10 @@ return Router.current() && Router.current().route.getName() === name
 });
 return active && 'active'; }
 });
+Template.header.events({
+    'click #login-buttons-logout' : function (event, template) {
+        Meteor.logout(function(err) {
+            Router.go('/');
+        });
+    }
+});

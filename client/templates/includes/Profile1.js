@@ -12,8 +12,17 @@ Template.Profile1.events({
         var fileObj =  new FS.File(file);
         fileObj.creatorId = Meteor.userId();
         Uploads.insert(fileObj, function(err) {
-             console.log(err);
-        }); 
+        if(err)
+           console.log(err);
+        });
+        $("#FileUploader").val('');
       });
+    },
+    'click .delete': function(e) { 
+      e.preventDefault();
+      if (confirm("Delete this Ad?")) { 
+        var currentUploadId = this._id; 
+        Uploads.remove(currentUploadId); 
+      } 
     }    
 });

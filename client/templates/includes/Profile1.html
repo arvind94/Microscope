@@ -7,16 +7,15 @@
 			</div>
 			<div class="panel-body">
 				<p>
-					Add Files
-					<span class="btn btn-default btn-file">
-						<input multiple class="file fileInput" type="file"/>
+					Add a New Ad
+					<span new class="btn btn-default btn-file">
+						<input multiple class="file fileInput" type="file" id="FileUploader"/>
 					</span>
 				</p>
 			</div>
 			<table class="table table-hover table-striped table-bordered">
 				<thead>
 					<th>Name</th>
-					<th>Download</th>
 				</thead>
 				<tbody>
 				{{#each uploads}}
@@ -25,6 +24,9 @@
 						<td>{{name}}</td>
 						<td>
 							<a target="_blank" class="btn btn-primary" href="{{url download=true}}">Download</a>
+						</td>
+						<td>
+							<a class="btn btn-danger delete" href="#">Delete</a>
 						</td>
 					</tr>
 				{{/if}}

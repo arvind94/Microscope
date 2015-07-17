@@ -4,6 +4,10 @@ Template.Profile1.helpers({
   },
   ownUpload:function(){
     return this.creatorId === Meteor.userId();
+  },
+  ownCampaign:function(){
+    //console.log(this.campaignId);
+    return this.campaignId === campaignName;
   }
 });
 Template.Profile1.events({
@@ -12,9 +16,13 @@ Template.Profile1.events({
         var fileObj =  new FS.File(file);
         console.log(fileObj.original.name);
         fileObj.creatorId = Meteor.userId();
-        if(Uploads.find({'original.name': fileObj.original.name}).fetch().length!==0) {
+        //console.log(campaignName);
+        fileObj.campaignId = campaignName;
+        //console.log(fileObj.campaignId);
+        if(Uploads.find({'original.name': fileObj.original.name,'campaignId': campaignName, 'creatorId': Meteor.userId}).fetch().length!==0){
+          console.log(Uploads.find({'original.name': fileObj.original.name,'campaignId': campaignName, 'creatorId': Meteor.userId}).fetch());
           if(confirm("Ad already exists, do you want to replace it?")) {
-            Uploads.remove(Uploads.find({'original.name': fileObj.original.name}).fetch()[0]._id);
+            Uploads.remove(Uploads.find({'original.name': fileObj.original.name,'campaignId': campaignName, 'creatorId': Meteor.userId}).fetch()[0]._id);
             Uploads.insert(fileObj, function(err) {
             if(err)
             console.log(err);
@@ -36,5 +44,9 @@ Template.Profile1.events({
         var currentUploadId = this._id; 
         Uploads.remove(currentUploadId); 
       } 
+    },
+    'click .backToCampaigns': function(e) { 
+      e.preventDefault();
+      Router.go('Campaign');  
     }    
 });

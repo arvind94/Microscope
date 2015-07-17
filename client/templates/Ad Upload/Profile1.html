@@ -1,0 +1,42 @@
+<template name="Profile1">
+	{{#if currentUser}}
+	<div class="col-md-4 push-down">
+		<div class="panel panel-default">
+			<div class="panel-heading">
+				<h3 class="panel-title">Uploads Section</h3>
+			</div>
+			<div class="panel-body">
+				<p>
+					Add a New Ad
+					<span new class="btn btn-default btn-file">
+						<input multiple class="file fileInput" type="file" id="FileUploader"/>
+					</span>
+				</p>
+				<a class="btn btn-primary backToCampaigns" href="#">View Campaigns</a>
+			</div>
+			<table class="table table-hover table-striped table-bordered">
+				<thead>
+					<th>Name</th>
+				</thead>
+				<tbody>
+				{{#each uploads}}
+				{{#if ownUpload}}
+				{{#if ownCampaign}}
+					<tr>
+						<td>{{name}}</td>
+						<td>
+							<a target="_blank" class="btn btn-primary" href="{{url download=true}}">Download</a>
+						</td>
+						<td>
+							<a class="btn btn-danger delete" href="#">Delete</a>
+						</td>
+					</tr>
+				{{/if}}	
+				{{/if}}
+				{{/each}}
+				</tbody>
+			</table>
+		</div>
+	</div>
+	{{/if}}
+</template>

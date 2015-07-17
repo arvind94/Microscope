@@ -1,0 +1,14 @@
+<template name="campaignSubmit">
+  <form class="main form page">
+    <div class="form-group">
+      <label class="control-label" for="title">Title</label>
+      <div class="controls">
+          <input name="title" id="title" type="text" value="" placeholder="Name your Campaign" class="form-control"/>
+            <span class="help-block">{{errorMessage 'title'}}
+            </span>
+      </div>
+    </div>
+    <input type="submit" value="Submit" class="btn btn-primary"/>
+    <a class="btn btn-danger cancel" href="#">Cancel</a>
+  </form>
+</template>

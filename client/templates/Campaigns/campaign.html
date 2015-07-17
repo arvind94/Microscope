@@ -1,29 +1,24 @@
-<template name="Profile1">
+<template name="Campaign">
 	{{#if currentUser}}
 	<div class="col-md-4 push-down">
 		<div class="panel panel-default">
 			<div class="panel-heading">
-				<h3 class="panel-title">Uploads Section</h3>
+				<h3 class="panel-title">Campaigns
+				<a class="btn btn-primary newCampaign" href="#">Create a New Campaign</a>
+				</h3>
 			</div>
 			<div class="panel-body">
-				<p>
-					Add a New Ad
-					<span new class="btn btn-default btn-file">
-						<input multiple class="file fileInput" type="file" id="FileUploader"/>
-					</span>
-				</p>
 			</div>
 			<table class="table table-hover table-striped table-bordered">
 				<thead>
 					<th>Name</th>
 				</thead>
 				<tbody>
-				{{#each uploads}}
-				{{#if ownUpload}}
+				{{#each campaigns}}
+				{{#if ownCampaign}}
 					<tr>
-						<td>{{name}}</td>
 						<td>
-							<a target="_blank" class="btn btn-primary" href="{{url download=true}}">Download</a>
+							<a class="btn btn-primary campaignSelect" href="#">{{name}}</a>
 						</td>
 						<td>
 							<a class="btn btn-danger delete" href="#">Delete</a>

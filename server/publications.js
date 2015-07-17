@@ -12,3 +12,4 @@ return Comments.find({postId: postId});
 Meteor.publish('notifications', function() { return Notifications.find({userId: this.userId, read:false});
 });
 Meteor.publish('uploads', function(){ return Uploads.find(); });
+Meteor.publish('campaigns', function(){ return Campaigns.find();});

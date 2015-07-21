@@ -1,0 +1,57 @@
+<template name="Rule">
+	{{#if currentUser}}
+	<div class="col-md-4 push-down">
+		<div class="panel panel-default">
+			<div class="panel-heading">
+				<h3 class="panel-title">Rules
+				<a class="btn btn-primary newRule" href="#">Create a New Rule</a>
+				<a class="btn btn-danger viewAds" href="#">View Ads</a>
+				</h3>
+			</div>
+			<div class="panel-body">
+			</div>
+			<table class="table table-hover table-striped table-bordered">
+				<thead>
+					<th>Rule No.</th>
+					<th>Gaze Time (Seconds)</th>
+					<th>Gender</th>
+					<th>Age</th>
+					<th>Race</th>
+					<th>Emotion</th>
+				</thead>
+				<tbody>
+					{{#each rules}}
+					{{#if ownRule}}
+					{{#if sameCampaign}}
+					<tr>
+						<td>
+							<a>{{ruleNo}}</a>
+						</td>
+						<td>
+							<a>{{gazeTime}}</a>
+						</td>
+						<td>
+							<a>{{gender}}</a>
+						</td>
+						<td>
+							<a>{{age}}</a>
+						</td>
+						<td>
+							<a>{{race}}</a>
+						</td>
+						<td>
+							<a>{{emotion}}</a>
+						</td>
+						<td>
+							<a class="btn btn-danger delete" href="#">Delete</a>
+						</td>
+					</tr>
+					{{/if}}
+					{{/if}}
+					{{/each}}
+				</tbody>
+			</table>
+		</div>
+	</div>
+	{{/if}}
+</template>

@@ -30,6 +30,7 @@ Template.Campaign.events({
   'click .campaignSelect': function(e) { 
     e.preventDefault();
     campaignName = this.title;
+    console.log(campaignName);
     Router.go('Profile1');
-  },
+  }
 });

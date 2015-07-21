@@ -48,5 +48,9 @@ Template.Profile1.events({
     'click .backToCampaigns': function(e) { 
       e.preventDefault();
       Router.go('Campaign');  
-    }    
+    },
+    'click .setRules': function(e) { 
+    e.preventDefault();
+    Router.go('Rule');
+  }    
 });

@@ -1,0 +1,89 @@
+<template name="ruleSubmit">
+	{{#if currentUser}}
+	<div class="col-md-4 push-down">
+		<table class="table table-hover table-striped table-bordered">
+			<thead>
+				<th>Rule No.</th>
+				<th>Gaze Time (Seconds)</th>
+				<th>Gender</th>
+				<th>Age</th>
+				<th>Race</th>
+				<th>Emotion</th>
+			</thead>
+			<tbody>
+				<tr>
+					<form action="demo_form.asp">
+						<td>
+							<select id="ruleNo">
+								<option value = "1">1</option>
+							</select>
+						</td>
+						<td>
+							<select id="gazeTime">
+								<option value = ""></option>
+								<option value = "1">1</option>
+								<option value = "2">2</option>
+								<option value = "3">3</option>
+								<option value = "4">4</option>
+								<option value = "5">5</option>
+								<option value = "6">6</option>
+								<option value = "7">7</option>
+								<option value = "8">8</option>
+								<option value = "9">9</option>
+								<option value = "10">10</option>
+								<option value = "15">15</option>
+								<option value = "20">20</option>
+								<option value = "25">25</option>
+								<option value = "30">30</option>
+								<option value = "35">35</option>
+								<option value = "40">40</option>
+								<option value = "45">45</option>
+								<option value = "50">50</option>
+								<option value = "55">55</option>
+								<option value = "60">60</option>
+							</select>
+						</td>
+						<td>
+							<select id="gender">
+								<option value = ""></option>
+								<option value = "Male">Male</option>
+								<option value = "Female">Female</option>
+							</select>
+						</td>
+						<td>
+							<select id="age">
+								<option value = ""></option>
+								<option value = "0-10">0-10</option>
+								<option value = "10-20">10-20</option>
+								<option value = "20-40">20-40</option>
+								<option value = "40-60">40-60</option>
+								<option value = "60+">60+</option>
+							</select>
+						</td>
+						<td>
+							<select id="race">
+								<option value = ""></option>
+								<option value = "Caucasian">Caucasian</option>
+								<option value = "Asian">Asian</option>
+								<option value = "Black">Black</option>
+								<option value = "Indian">Indian</option>
+								<option value = "Hispanic">Hispanic</option>
+							</select>
+						</td>
+						<td>
+							<select id="emotion">
+								<option value = ""></option>
+								<option value = "Happy">Happy</option>
+								<option value = "Sad">Sad</option>
+								<option value = "Angry">Angry</option>
+								<option value = "Neutral">Neutral</option>
+							</select>
+						</td>
+						<input type="submit" value="Submit">
+					</form>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+	{{/if}}
+</template>

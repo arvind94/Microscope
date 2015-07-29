@@ -32,9 +32,9 @@ Template.Rule.events({
     e.preventDefault();
     Router.go('ruleSubmit');
   },
-  'click .viewAds': function(e) { 
+  'click .backToCampaignSetup': function(e) { 
     e.preventDefault();
-    Router.go('Profile1');
+    Router.go('campaignSetup');
   },
   'click .delete': function(e) { 
       e.preventDefault();

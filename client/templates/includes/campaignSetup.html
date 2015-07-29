@@ -1,0 +1,17 @@
+<template name="campaignSetup">
+	{{#if currentUser}}
+	<div class="col-md-4 push-down">
+		<div class="panel panel-default">
+			<div class="panel-heading">
+				<h3 class="panel-title">Campaign Setup</h3>
+			</div>
+			<div class="panel-body">
+				<a class="btn btn-primary adUpload" href="#">Upload Ads</a>
+				<a class="btn btn-primary setRules" href="#">Set Rules</a>
+				<a class="btn btn-primary createWorkflow" href="#">Create Workflow</a>
+				<a class="btn btn-danger backToCampaigns" href="#">View Campaigns</a>
+			</div>
+		</div>
+	</div>
+	{{/if}}
+</template>

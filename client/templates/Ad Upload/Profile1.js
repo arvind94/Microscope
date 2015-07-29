@@ -45,12 +45,8 @@ Template.Profile1.events({
         Uploads.remove(currentUploadId); 
       } 
     },
-    'click .backToCampaigns': function(e) { 
+    'click .backToCampaignSetup': function(e) { 
       e.preventDefault();
-      Router.go('Campaign');  
-    },
-    'click .setRules': function(e) { 
-    e.preventDefault();
-    Router.go('Rule');
-  }    
+      Router.go('campaignSetup');  
+    }    
 });

@@ -31,6 +31,6 @@ Template.Campaign.events({
     e.preventDefault();
     campaignName = this.title;
     console.log(campaignName);
-    Router.go('Profile1');
+    Router.go('campaignSetup');
   }
 });

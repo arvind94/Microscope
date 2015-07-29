@@ -1,0 +1,32 @@
+<template name="test">
+  <head>
+    <style>
+      body {
+        margin: 0px;
+        padding: 0px;
+      }
+    </style>
+  </head>
+  <body>
+      <div id="container"></div>
+    <!--<script src="http://www.html5canvastutorials.com/libraries/kinetic-v4.1.1.js"></script>-->
+	<script src="kinetic-v4.1.1.js"></script>
+    <script src="test.js"></script>
+	<script type="text/javascript">
+		var test = new WFNODEDRAWINGAPP.Main();
+		document.onkeydown = function(evt) {
+						evt = evt || window.event;
+						if (evt.keyCode == 27) {
+						test.nodeDisplayContainer.removeDynamicTempShapes();
+						//alert("Escape");
+						}
+						};
+     //var rectNode = new WFNODEUTILS.Node();
+	 //rectNode.initRectangularNode();
+	 //var ndc = new WFNODEUTILS.NodeDisplayContainer();
+	 //ndc.add(rectNode.kineticRect);
+	 //ndc.addLayerToStage();
+	
+	</script>
+  </body>
+</template>

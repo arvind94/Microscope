@@ -1,19 +1,30 @@
+Template.workflow.onCreated(function() { 
+  Session.set('nodeSubmitErrors', {});
+});
+Template.workflow.helpers({ 
+  errorMessage: function(field) {
+    return Session.get('nodeSubmitErrors')[field]; 
+  },
+  errorClass: function (field) {
+    return !!Session.get('nodeSubmitErrors')[field] ? 'has-error' : '';
+  } 
+});
 Template.workflow.onRendered(function(){
   $.getScript("http://d3js.org/d3.v3.js", function(){
     console.log("Script 1 loaded");
   }),
   $.getScript("http://cdn.jsdelivr.net/filesaver.js/0.1/FileSaver.min.js", function(){
     console.log("Script 2 loaded");
-  }),
-  $.getScript("http://upload-icon.png", function(){
-    console.log("Script 3 loaded");
-  }),
-  $.getScript("download-icon.png", function(){
-    console.log("Script 4 loaded");
-  }),
-  $.getScript("trash-icon.png", function(){
-    console.log("Script 5 loaded");
   })
+  // $.getScript("http://upload-icon.png", function(){
+  //   console.log("Script 3 loaded");
+  // }),
+  // $.getScript("download-icon.png", function(){
+  //   console.log("Script 4 loaded");
+  // }),
+  // $.getScript("trash-icon.png", function(){
+  //   console.log("Script 5 loaded");
+  // })
 
 document.onload = (function(d3, saveAs, Blob, undefined){
   "use strict";
@@ -176,7 +187,7 @@ document.onload = (function(d3, saveAs, Blob, undefined){
     // handle delete graph
     d3.select("#delete-graph").on("click", function(){
       thisGraph.deleteGraph(false);
-      console.log("hi");
+      console.log("delete");
     });
   };
 
@@ -351,6 +362,7 @@ document.onload = (function(d3, saveAs, Blob, undefined){
           .text(d.title)
           .on("mousedown", function(d){
             d3.event.stopPropagation();
+            this.blur();
           })
           .on("keydown", function(d){
             d3.event.stopPropagation();
@@ -361,6 +373,20 @@ document.onload = (function(d3, saveAs, Blob, undefined){
           .on("blur", function(d){
             d.title = this.textContent;
             thisGraph.insertTitleLinebreaks(d3node, d.title);
+            var arvind = { 
+              title: d.title,
+              campaign:campaignName
+            };
+            var errors = validateNode(arvind); 
+            if (errors.title){
+              return Session.set('nodeSubmitErrors', errors);
+              throwError('This ad does not exist for this campaign');
+            }
+            Meteor.call('nodeInsert', arvind, function(error, result) { // display the error to the user and abort
+              if (error)
+              return throwError(error.reason);
+            });
+            console.log(d.title);
             d3.select(this.parentElement).remove();
           });
     return d3txt;
@@ -441,7 +467,7 @@ document.onload = (function(d3, saveAs, Blob, undefined){
     } else if (state.graphMouseDown && d3.event.shiftKey){
       // clicked not dragged from svg
       var xycoords = d3.mouse(thisGraph.svgG.node()),
-          d = {id: thisGraph.idct++, title: "new concept", x: xycoords[0], y: xycoords[1]};
+          d = {id: thisGraph.idct++, title: "Enter Ad Name", x: xycoords[0], y: xycoords[1]};
       thisGraph.nodes.push(d);
       thisGraph.updateGraph();
       // make title of text immediently editable
@@ -470,7 +496,6 @@ document.onload = (function(d3, saveAs, Blob, undefined){
     state.lastKeyDown = d3.event.keyCode;
     var selectedNode = state.selectedNode,
         selectedEdge = state.selectedEdge;
-
     switch(d3.event.keyCode) {
     case consts.BACKSPACE_KEY:
     case consts.DELETE_KEY:
@@ -480,6 +505,7 @@ document.onload = (function(d3, saveAs, Blob, undefined){
         thisGraph.spliceLinksForNode(selectedNode);
         state.selectedNode = null;
         thisGraph.updateGraph();
+        console.log("delete me");
       } else if (selectedEdge){
         thisGraph.edges.splice(thisGraph.edges.indexOf(selectedEdge), 1);
         state.selectedEdge = null;
@@ -533,7 +559,7 @@ document.onload = (function(d3, saveAs, Blob, undefined){
     paths.exit().remove();
     
     // update existing nodes
-    thisGraph.circles = thisGraph.circles.data(thisGraph.nodes, function(d){ return d.id;});
+    thisGraph.circles = thisGraph.circles.data(thisGraph.nodes, function(d){return d.id;});
     thisGraph.circles.attr("transform", function(d){return "translate(" + d.x + "," + d.y + ")";});
 
     // add new nodes
@@ -602,18 +628,25 @@ document.onload = (function(d3, saveAs, Blob, undefined){
       yLoc = 100;
 
   // initial node data
-  var nodes = [{title: "new concept", id: 0, x: xLoc, y: yLoc},
-               {title: "new concept", id: 1, x: xLoc, y: yLoc + 200}];
-  var edges = [{source: nodes[1], target: nodes[0]}];
+  // var nodes = [{title: "new concept", id: 0, x: xLoc, y: yLoc},
+  //              {title: "new concept", id: 1, x: xLoc, y: yLoc + 200}];
+  // var edges = [{source: nodes[1], target: nodes[0]}];
 
-
-  /** MAIN SVG **/
+  var nodes = [];
+  var edges = [];
   var svg = d3.select("body").append("svg")
         .attr("width", width)
         .attr("height", height);
   var graph = new GraphCreator(svg, nodes, edges);
-      graph.setIdCt(2);
+      graph.setIdCt(0);
   graph.updateGraph();
+  /** MAIN SVG **/
+  // var svg = d3.select("body").append("svg")
+  //       .attr("width", width)
+  //       .attr("height", height);
+  // var graph = new GraphCreator(svg, nodes, edges);
+  //     graph.setIdCt(2);
+  // graph.updateGraph();
 })(window.d3, window.saveAs, window.Blob);
 });
 

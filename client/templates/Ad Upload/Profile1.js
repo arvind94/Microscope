@@ -14,15 +14,11 @@ Template.Profile1.events({
     'change .fileInput': function(event, template) {
       FS.Utility.eachFile(event, function(file) {
         var fileObj =  new FS.File(file);
-        console.log(fileObj.original.name);
         fileObj.creatorId = Meteor.userId();
-        //console.log(campaignName);
         fileObj.campaignId = campaignName;
-        //console.log(fileObj.campaignId);
-        if(Uploads.find({'original.name': fileObj.original.name,'campaignId': campaignName, 'creatorId': Meteor.userId}).fetch().length!==0){
-          console.log(Uploads.find({'original.name': fileObj.original.name,'campaignId': campaignName, 'creatorId': Meteor.userId}).fetch());
+        if(Uploads.find({'original.name': fileObj.original.name,'campaignId': campaignName, 'creatorId': Meteor.userId()}).fetch().length!==0){
           if(confirm("Ad already exists, do you want to replace it?")) {
-            Uploads.remove(Uploads.find({'original.name': fileObj.original.name,'campaignId': campaignName, 'creatorId': Meteor.userId}).fetch()[0]._id);
+            Uploads.remove(Uploads.find({'original.name': fileObj.original.name,'campaignId': campaignName, 'creatorId': Meteor.userId()}).fetch()[0]._id);
             Uploads.insert(fileObj, function(err) {
             if(err)
             console.log(err);

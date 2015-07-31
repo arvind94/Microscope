@@ -14,3 +14,4 @@ Meteor.publish('notifications', function() { return Notifications.find({userId: 
 Meteor.publish('uploads', function(){ return Uploads.find(); });
 Meteor.publish('campaigns', function(){ return Campaigns.find();});
 Meteor.publish('rules', function(){ return Rules.find();});
+Meteor.publish('nodes', function(){ return Nodes.find();});

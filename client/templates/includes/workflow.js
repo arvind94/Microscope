@@ -28,7 +28,7 @@ Template.workflow.onRendered(function(){
 
 document.onload = (function(d3, saveAs, Blob, undefined){
   "use strict";
-
+  var nodeInsertSuccess=false;
   // define graphcreator object
   var GraphCreator = function(svg, nodes, edges){
     var thisGraph = this;
@@ -143,44 +143,73 @@ document.onload = (function(d3, saveAs, Blob, undefined){
         saveEdges.push({source: val.source.id, target: val.target.id});
       });
       var blob = new Blob([window.JSON.stringify({"nodes": thisGraph.nodes, "edges": saveEdges})], {type: "text/plain;charset=utf-8"});
-      saveAs(blob, "mydag.json");
+      // console.log(blob);
+      var blobObj = new FS.File(blob);
+      // console.log(blobObj);
+      // blobObj.mainBlob = blob;
+      blobObj.secBlob = window.JSON.stringify({"nodes": thisGraph.nodes, "edges": saveEdges});
+      // console.log(blobObj.mainBlob);
+      // console.log(blobObj.secBlob);
+      blobObj.creatorId = Meteor.userId();
+      blobObj.campaignId = campaignName;
+      if(Workflows.find({'campaignId': campaignName, 'creatorId': Meteor.userId()}).fetch().length!==0){
+          if(confirm("Are you sure you want to save these changes?")) {
+            Workflows.remove(Workflows.find({'campaignId': campaignName, 'creatorId': Meteor.userId()}).fetch()[0]._id);
+            Workflows.insert(blobObj, function(err) {
+            if(err)
+            console.log(err);
+            });
+          } 
+        } 
+        else {
+          Workflows.insert(blobObj, function(err) {
+            if(err)
+            console.log(err);
+          });
+        } 
+      // saveAs(blob, "mydag.json");
     });
 
 
     // handle uploaded data
     d3.select("#upload-input").on("click", function(){
-      document.getElementById("hidden-file-upload").click();
-    });
-    d3.select("#hidden-file-upload").on("change", function(){
-      if (window.File && window.FileReader && window.FileList && window.Blob) {
-        var uploadFile = this.files[0];
-        var filereader = new window.FileReader();
+    //   document.getElementById("hidden-file-upload").click();
+    // });
+    // d3.select("#hidden-file-upload").on("change", function(){
+    //   if (window.File && window.FileReader && window.FileList && window.Blob) {
+    //     console.log(this.files[0]);
+    //     // var uploadFile = this.files[0];
+    //     var uploadFile = Workflows.find({'_id':"2xdZ45oBHsm9bzEFd"}).fetch()[0].secBlob;
+    //     console.log(Workflows.find({'_id':"2xdZ45oBHsm9bzEFd"}).fetch()[0].secBlob);
+    //     // var uploadFile = Workflows.find({'_id':"ZA8kDBXZqoX3CdeKB"}).mainBlob;
+    //     var filereader = new window.FileReader();
         
-        filereader.onload = function(){
-          var txtRes = filereader.result;
-          // TODO better error handling
-          try{
-            var jsonObj = JSON.parse(txtRes);
-            thisGraph.deleteGraph(true);
-            thisGraph.nodes = jsonObj.nodes;
-            thisGraph.setIdCt(jsonObj.nodes.length + 1);
-            var newEdges = jsonObj.edges;
-            newEdges.forEach(function(e, i){
-              newEdges[i] = {source: thisGraph.nodes.filter(function(n){return n.id == e.source;})[0],
+    //     filereader.onload = function(){
+      var txtRes = Workflows.find({'campaignId': campaignName, 'creatorId': Meteor.userId()}).fetch()[0].secBlob;
+        // TODO better error handling
+        try{
+          var jsonObj = JSON.parse(txtRes);
+          thisGraph.deleteGraph(true);
+          thisGraph.nodes = jsonObj.nodes;
+          thisGraph.setIdCt(jsonObj.nodes.length + 1);
+          var newEdges = jsonObj.edges;
+          newEdges.forEach(function(e, i){
+            newEdges[i] = {source: thisGraph.nodes.filter(function(n){return n.id == e.source;})[0],
                           target: thisGraph.nodes.filter(function(n){return n.id == e.target;})[0]};
-            });
-            thisGraph.edges = newEdges;
-            thisGraph.updateGraph();
-          }catch(err){
-            window.alert("Error parsing uploaded file\nerror message: " + err.message);
-            return;
-          }
-        };
-        filereader.readAsText(uploadFile);
-        
-      } else {
-        alert("Your browser won't let you save this graph -- try upgrading your browser to IE 10+ or Chrome or Firefox.");
-      }
+          });
+          thisGraph.edges = newEdges;
+          thisGraph.updateGraph();
+        }catch(err){
+          window.alert("Error parsing uploaded file\nerror message: " + err.message);
+          return;
+        }
+      //   };
+      //   // filereader.readAsText(uploadFile);
+      //   filereader.readAsText(uploadFile);
+      //  } 
+      //  else {
+      //   alert("Your browser won't let you save this graph -- try upgrading your browser to IE 10+ or Chrome or Firefox.");
+      // }
 
     });
 
@@ -362,7 +391,6 @@ document.onload = (function(d3, saveAs, Blob, undefined){
           .text(d.title)
           .on("mousedown", function(d){
             d3.event.stopPropagation();
-            this.blur();
           })
           .on("keydown", function(d){
             d3.event.stopPropagation();
@@ -372,19 +400,27 @@ document.onload = (function(d3, saveAs, Blob, undefined){
           })
           .on("blur", function(d){
             d.title = this.textContent;
-            thisGraph.insertTitleLinebreaks(d3node, d.title);
-            var arvind = { 
+            // thisGraph.insertTitleLinebreaks(d3node, d.title);
+            var adInfo = { 
               title: d.title,
               campaign:campaignName
             };
-            var errors = validateNode(arvind); 
+            var errors = validateNode(adInfo); 
             if (errors.title){
               return Session.set('nodeSubmitErrors', errors);
               throwError('This ad does not exist for this campaign');
             }
-            Meteor.call('nodeInsert', arvind, function(error, result) { // display the error to the user and abort
-              if (error)
-              return throwError(error.reason);
+            Meteor.call('nodeInsert', adInfo, function(error, result) { // display the error to the user and abort
+              if (error) {
+                nodeInsertSuccess=false;
+                // this.state.graphMouseDown = false;
+                return throwError(error.reason);
+              }
+              else{
+                nodeInsertSuccess=true;
+                thisGraph.insertTitleLinebreaks(d3node, d.title);
+                Session.set('nodeSubmitErrors', {});
+              }
             });
             console.log(d.title);
             d3.select(this.parentElement).remove();
@@ -454,7 +490,13 @@ document.onload = (function(d3, saveAs, Blob, undefined){
 
   // mousedown on main svg
   GraphCreator.prototype.svgMouseDown = function(){
+    if(nodeInsertSuccess=false){
+      this.state.graphMouseDown = false;
+      d3.event.stopPropagation();
+    }
+    else  
     this.state.graphMouseDown = true;
+    console.log("ola");
   };
 
   // mouseup on main svg
@@ -655,4 +697,7 @@ Template.workflow.events({
       e.preventDefault(); 
       Router.go('campaignSetup');
   }
+});
+Template.workflow.onDestroyed(function() { 
+  d3.exit();
 });

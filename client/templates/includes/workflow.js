@@ -151,10 +151,15 @@ document.onload = (function(d3, saveAs, Blob, undefined){
       // console.log(blobObj.mainBlob);
       // console.log(blobObj.secBlob);
       blobObj.creatorId = Meteor.userId();
-      blobObj.campaignId = campaignName;
-      if(Workflows.find({'campaignId': campaignName, 'creatorId': Meteor.userId()}).fetch().length!==0){
+      // var currentCampaignName = CurrentCampaigns.find({'userId': Meteor.userId()}).fetch()[0].title;
+      var currentCampaignName = sessionStorage.campaignName;
+      blobObj.campaignId = currentCampaignName;
+      // blobObj.campaignId = campaignName;
+      // if(Workflows.find({'campaignId': campaignName, 'creatorId': Meteor.userId()}).fetch().length!==0){
+      if(Workflows.find({'campaignId': currentCampaignName, 'creatorId': Meteor.userId()}).fetch().length!==0){  
           if(confirm("Are you sure you want to save these changes?")) {
-            Workflows.remove(Workflows.find({'campaignId': campaignName, 'creatorId': Meteor.userId()}).fetch()[0]._id);
+            // Workflows.remove(Workflows.find({'campaignId': campaignName, 'creatorId': Meteor.userId()}).fetch()[0]._id);
+            Workflows.remove(Workflows.find({'campaignId': currentCampaignName, 'creatorId': Meteor.userId()}).fetch()[0]._id);
             Workflows.insert(blobObj, function(err) {
             if(err)
             console.log(err);
@@ -170,9 +175,35 @@ document.onload = (function(d3, saveAs, Blob, undefined){
       // saveAs(blob, "mydag.json");
     });
 
+//Upload previous workflow if it exists
+// var numberofuploads = 1;
+// if((Workflows.find({'campaignId': campaignName, 'creatorId': Meteor.userId()}).fetch().length!==0)&&(numberofuploads === 1)){
+// var txtRes = Workflows.find({'campaignId': campaignName, 'creatorId': Meteor.userId()}).fetch()[0].secBlob;
+//         // TODO better error handling
+//         try{
+//           var jsonObj = JSON.parse(txtRes);
+//           thisGraph.deleteGraph(true);
+//           thisGraph.nodes = jsonObj.nodes;
+//           thisGraph.setIdCt(jsonObj.nodes.length + 1);
+//           var newEdges = jsonObj.edges;
+//           newEdges.forEach(function(e, i){
+//             newEdges[i] = {source: thisGraph.nodes.filter(function(n){return n.id == e.source;})[0],
+//                           target: thisGraph.nodes.filter(function(n){return n.id == e.target;})[0]};
+//           });
+//           thisGraph.edges = newEdges;
+//           thisGraph.updateGraph();
+//           // thisGraph = this;
+//           numberofuploads++;
+//           console.log(numberofuploads);
+//         }catch(err){
+//           window.alert("Error parsing uploaded file\nerror message: " + err.message);
+//           return;
+//         }
+// }
 
     // handle uploaded data
-    d3.select("#upload-input").on("click", function(){
+    d3.select("#reset-input").on("click", function(){
+      console.log("click");
     //   document.getElementById("hidden-file-upload").click();
     // });
     // d3.select("#hidden-file-upload").on("change", function(){
@@ -185,7 +216,10 @@ document.onload = (function(d3, saveAs, Blob, undefined){
     //     var filereader = new window.FileReader();
         
     //     filereader.onload = function(){
-      var txtRes = Workflows.find({'campaignId': campaignName, 'creatorId': Meteor.userId()}).fetch()[0].secBlob;
+      // var currentCampaignName = CurrentCampaigns.find({'userId': Meteor.userId()}).fetch()[0].title;
+      var currentCampaignName = sessionStorage.campaignName;
+      var txtRes = Workflows.find({'campaignId': currentCampaignName, 'creatorId': Meteor.userId()}).fetch()[0].secBlob;
+      // var txtRes = Workflows.find({'campaignId': campaignName, 'creatorId': Meteor.userId()}).fetch()[0].secBlob;
         // TODO better error handling
         try{
           var jsonObj = JSON.parse(txtRes);
@@ -403,7 +437,9 @@ document.onload = (function(d3, saveAs, Blob, undefined){
             // thisGraph.insertTitleLinebreaks(d3node, d.title);
             var adInfo = { 
               title: d.title,
-              campaign:campaignName
+              // campaign: CurrentCampaigns.find({'userId': Meteor.userId()}).fetch()[0].title
+              // campaign:campaignName
+              campaign:sessionStorage.campaignName
             };
             var errors = validateNode(adInfo); 
             if (errors.title){
@@ -496,7 +532,6 @@ document.onload = (function(d3, saveAs, Blob, undefined){
     }
     else  
     this.state.graphMouseDown = true;
-    console.log("ola");
   };
 
   // mouseup on main svg
@@ -601,6 +636,7 @@ document.onload = (function(d3, saveAs, Blob, undefined){
     paths.exit().remove();
     
     // update existing nodes
+    console.log("ola");
     thisGraph.circles = thisGraph.circles.data(thisGraph.nodes, function(d){return d.id;});
     thisGraph.circles.attr("transform", function(d){return "translate(" + d.x + "," + d.y + ")";});
 
@@ -657,6 +693,7 @@ document.onload = (function(d3, saveAs, Blob, undefined){
 
   // warn the user when leaving
   window.onbeforeunload = function(){
+    console.log("nigga supreme");
     return "Make sure to save your graph locally before leaving :-)";
   };      
 
@@ -673,7 +710,6 @@ document.onload = (function(d3, saveAs, Blob, undefined){
   // var nodes = [{title: "new concept", id: 0, x: xLoc, y: yLoc},
   //              {title: "new concept", id: 1, x: xLoc, y: yLoc + 200}];
   // var edges = [{source: nodes[1], target: nodes[0]}];
-
   var nodes = [];
   var edges = [];
   var svg = d3.select("body").append("svg")
@@ -694,10 +730,12 @@ document.onload = (function(d3, saveAs, Blob, undefined){
 
 Template.workflow.events({
   'click .backToCampaignSetup': function(e) {
-      e.preventDefault(); 
-      Router.go('campaignSetup');
+      e.preventDefault();
+      //prompts workflow window to unload, preventing image from showing on other pages, and routes to Campaign Setup
+      // open('campaignSetup', '_self').close();
+      Router.go('campaignSetup');      
   }
 });
-Template.workflow.onDestroyed(function() { 
-  d3.exit();
+Template.workflow.onDestroyed(function(){
+  open(Router.current().route.path(), '_self').close();
 });

@@ -29,8 +29,21 @@ Template.Campaign.events({
   },
   'click .campaignSelect': function(e) { 
     e.preventDefault();
-    campaignName = this.title;
-    console.log(campaignName);
+    // var currentCampaign = { 
+    //   title: this.title
+    // };
+    // var errors = validateCampaign(campaign); 
+    // if (errors.title)
+    // return Session.set('campaignSubmitErrors', errors);
+    // Meteor.call('currentCampaignInsert', currentCampaign, function(error, result) { // display the error to the user and abort
+    //   console.log("2");
+    //   if (error)
+    //   return throwError(error.reason);
+    // });
+    // console.log(CurrentCampaigns.find({'userId': Meteor.userId()}).fetch()[0].title);
+    sessionStorage.campaignName = this.title;
+    // console.log(sessionStorage.campaignName);
+    // campaignName = this.title;
     Router.go('campaignSetup');
   }
 });

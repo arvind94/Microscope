@@ -1,13 +1,15 @@
 <template name="workflow">
+  {{#if currentUser}}
     	<div id="toolbox">
       		<input type="file" id="hidden-file-upload">
       		<input id="upload-input1" type="image" title="upload graph" src="upload-icon.png" alt="upload graph"> 
       		<input type="image" id="download-input1" title="download graph" src="download-icon.png" alt="download graph">
        		<input type="image" id="delete-graph1" title="delete graph" src="trash-icon.png" alt="delete graph">
        		<a class="btn btn-primary" id="reset-input">Reset to Last Save</a>
-       		<a class="btn btn-primary" id="download-input">Download</a>
-       		<a class="btn btn-danger" id="delete-graph">Delete</a>
+       		<a class="btn btn-primary" id="save-input">Save</a>
+       		<a class="btn btn-danger" id="delete-graph">Clear All</a>
        		<a class="btn btn-danger backToCampaignSetup" href="#">Back to Campaign Setup</a>
        		<span class="help-block">{{errorMessage 'title'}}</span>
     	</div>
+  {{/if}}
 </template>

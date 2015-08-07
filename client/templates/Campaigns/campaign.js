@@ -20,30 +20,28 @@ Template.Campaign.events({
         var currentUploadId = this._id; 
         Campaigns.remove(currentUploadId);
         console.log(this.title);
-        var length = Uploads.find({'campaignId': this.title, 'creatorId': this.userId}).fetch().length;
+        var length = Uploads.find({'campaignId': this.title, 'creatorId': Meteor.userId()}).fetch().length;
         for( var i = 0; i < length; i++){
-          Uploads.remove(Uploads.find({'campaignId': this.title, 'creatorId': this.userId}).fetch()[0]._id);
+          Uploads.remove(Uploads.find({'campaignId': this.title, 'creatorId': Meteor.userId()}).fetch()[0]._id);
           console.log(i);
         }
+        length = Nodes.find({'campaign': this.title, 'userId': Meteor.userId()}).fetch().length;
+        for( var i = 0; i < length; i++){
+          Nodes.remove(Nodes.find({'campaign': this.title, 'userId': Meteor.userId()}).fetch()[0]._id);
+          console.log(i);
+        }
+        length = Rules.find({'campaign': this.title, 'userId': Meteor.userId()}).fetch().length;
+        for( var i = 0; i < length; i++){
+          Rules.remove(Rules.find({'campaign': this.title, 'userId': Meteor.userId()}).fetch()[0]._id);
+          console.log(i);
+        }
+        if(Workflows.find({'campaignId': this.title, 'creatorId': Meteor.userId()}).fetch().length!==0)
+          Workflows.remove(Workflows.find({'campaignId': this.title, 'creatorId': Meteor.userId()}).fetch()[0]._id);
       }
   },
   'click .campaignSelect': function(e) { 
     e.preventDefault();
-    // var currentCampaign = { 
-    //   title: this.title
-    // };
-    // var errors = validateCampaign(campaign); 
-    // if (errors.title)
-    // return Session.set('campaignSubmitErrors', errors);
-    // Meteor.call('currentCampaignInsert', currentCampaign, function(error, result) { // display the error to the user and abort
-    //   console.log("2");
-    //   if (error)
-    //   return throwError(error.reason);
-    // });
-    // console.log(CurrentCampaigns.find({'userId': Meteor.userId()}).fetch()[0].title);
     sessionStorage.campaignName = this.title;
-    // console.log(sessionStorage.campaignName);
-    // campaignName = this.title;
     Router.go('campaignSetup');
   }
 });

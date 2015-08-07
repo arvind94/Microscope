@@ -1,7 +1,5 @@
 Template.Rule.helpers({
   sameCampaign:function() {
-    // return this.campaign === campaignName;
-    // return this.campaign === CurrentCampaigns.find({'userId':Meteor.userId()}).fetch()[0].title;
     return this.campaign === sessionStorage.campaignName;
   },
   rules:function() {

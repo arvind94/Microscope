@@ -137,7 +137,7 @@ document.onload = (function(d3, saveAs, Blob, undefined){
     window.onresize = function(){thisGraph.updateWindow(svg);};
 
     // handle download data
-    d3.select("#download-input").on("click", function(){
+    d3.select("#save-input").on("click", function(){
       var saveEdges = [];
       thisGraph.edges.forEach(function(val, i){
         saveEdges.push({source: val.source.id, target: val.target.id});
@@ -157,8 +157,18 @@ document.onload = (function(d3, saveAs, Blob, undefined){
       // blobObj.campaignId = campaignName;
       // if(Workflows.find({'campaignId': campaignName, 'creatorId': Meteor.userId()}).fetch().length!==0){
       if(Workflows.find({'campaignId': currentCampaignName, 'creatorId': Meteor.userId()}).fetch().length!==0){  
-          if(confirm("Are you sure you want to save these changes?")) {
+          if(confirm("There already exists a workflow for this campaign. Are you sure you want to save these changes?")) {
             // Workflows.remove(Workflows.find({'campaignId': campaignName, 'creatorId': Meteor.userId()}).fetch()[0]._id);
+            var length = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch().length;
+            for( var i = 0; i < length; i++){
+              var id = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch()[i]._id;  
+              Nodes.update(id, {$set:{'saved': "saved"}});
+              console.log(i);
+            }
+            length = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'deleted': true}).fetch().length;
+            for( var i = 0; i < length; i++){
+              Nodes.remove(Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'deleted': true}).fetch()[0]._id);  
+            }
             Workflows.remove(Workflows.find({'campaignId': currentCampaignName, 'creatorId': Meteor.userId()}).fetch()[0]._id);
             Workflows.insert(blobObj, function(err) {
             if(err)
@@ -171,6 +181,12 @@ document.onload = (function(d3, saveAs, Blob, undefined){
             if(err)
             console.log(err);
           });
+          var length = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch().length;
+          for( var i = 0; i < length; i++){
+            var id = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch()[i]._id;  
+            Nodes.update(id, {$set:{'saved': "saved"}});
+            console.log(i);
+          }
         } 
       // saveAs(blob, "mydag.json");
     });
@@ -293,6 +309,11 @@ document.onload = (function(d3, saveAs, Blob, undefined){
       thisGraph.nodes = [];
       thisGraph.edges = [];
       thisGraph.updateGraph();
+      var length = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch().length;
+        for( var i = 0; i < length; i++){
+          Nodes.remove(Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch()[0]._id);
+          console.log(i);
+        }  
     }
   };
 
@@ -439,7 +460,10 @@ document.onload = (function(d3, saveAs, Blob, undefined){
               title: d.title,
               // campaign: CurrentCampaigns.find({'userId': Meteor.userId()}).fetch()[0].title
               // campaign:campaignName
-              campaign:sessionStorage.campaignName
+              campaign:sessionStorage.campaignName,
+              saved: "notSaved",
+              d3id: d.id,
+              deleted: false
             };
             var errors = validateNode(adInfo); 
             if (errors.title){
@@ -582,7 +606,19 @@ document.onload = (function(d3, saveAs, Blob, undefined){
         thisGraph.spliceLinksForNode(selectedNode);
         state.selectedNode = null;
         thisGraph.updateGraph();
-        console.log("delete me");
+        console.log("ola");
+        if(Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'd3id': selectedNode.id}).fetch()[0].saved==="saved"){
+          var id = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'd3id': selectedNode.id}).fetch()[0]._id;  
+          Nodes.update(id, {$set:{'deleted': true}});
+        }
+        else{
+          // if(Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'd3id': selectedNode.id}).fetch()[0].saved==="notSaved")  
+          Nodes.remove(Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'd3id': selectedNode.id}).fetch()[0]._id);
+        }
+        // if(Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "saved"}).fetch().length === 0)
+        // Workflows.remove(Workflows.find({'campaignId': sessionStorage.campaignName, 'creatorId': Meteor.userId()}).fetch()[0]._id);
+        // console.log(selectedNode.id);
+        // console.log("delete me");
       } else if (selectedEdge){
         thisGraph.edges.splice(thisGraph.edges.indexOf(selectedEdge), 1);
         state.selectedEdge = null;
@@ -643,7 +679,6 @@ document.onload = (function(d3, saveAs, Blob, undefined){
     // add new nodes
     var newGs= thisGraph.circles.enter()
           .append("g");
-
     newGs.classed(consts.circleGClass, true)
       .attr("transform", function(d){return "translate(" + d.x + "," + d.y + ")";})
       .on("mouseover", function(d){        
@@ -693,7 +728,6 @@ document.onload = (function(d3, saveAs, Blob, undefined){
 
   // warn the user when leaving
   window.onbeforeunload = function(){
-    console.log("nigga supreme");
     return "Make sure to save your graph locally before leaving :-)";
   };      
 
@@ -737,5 +771,10 @@ Template.workflow.events({
   }
 });
 Template.workflow.onDestroyed(function(){
+  var length = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch().length;
+  for( var i = 0; i < length; i++){
+    Nodes.remove(Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch()[0]._id);
+    console.log(i);
+  }
   open(Router.current().route.path(), '_self').close();
 });

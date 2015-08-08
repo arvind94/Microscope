@@ -1,5 +1,7 @@
 Template.workflow.onCreated(function() { 
   Session.set('nodeSubmitErrors', {});
+  sessionStorage.resetWorkflowToLastSaveCounter = 0;
+  console.log(sessionStorage.resetWorkflowToLastSaveCounter);
 });
 Template.workflow.helpers({ 
   errorMessage: function(field) {
@@ -157,37 +159,65 @@ document.onload = (function(d3, saveAs, Blob, undefined){
       // blobObj.campaignId = campaignName;
       // if(Workflows.find({'campaignId': campaignName, 'creatorId': Meteor.userId()}).fetch().length!==0){
       if(Workflows.find({'campaignId': currentCampaignName, 'creatorId': Meteor.userId()}).fetch().length!==0){  
-          if(confirm("There already exists a workflow for this campaign. Are you sure you want to save these changes?")) {
-            // Workflows.remove(Workflows.find({'campaignId': campaignName, 'creatorId': Meteor.userId()}).fetch()[0]._id);
-            var length = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch().length;
+        if(confirm("There already exists a workflow for this campaign. Are you sure you want to save these changes?")) {
+          // Workflows.remove(Workflows.find({'campaignId': campaignName, 'creatorId': Meteor.userId()}).fetch()[0]._id);
+          if(sessionStorage.resetWorkflowToLastSaveCounter==0){
+            var length = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "saved"}).fetch().length;
             for( var i = 0; i < length; i++){
-              var id = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch()[i]._id;  
-              Nodes.update(id, {$set:{'saved': "saved"}});
-              console.log(i);
+              var nodeId = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "saved"}).fetch()[0]._id;
+              var noded3id = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "saved"}).fetch()[0].d3id;
+              var targetsLength = Nodes.find({'targets.d3id': noded3id}).fetch().length;
+              var sourcesLength = Nodes.find({'sources.d3id': noded3id}).fetch().length;
+              for(var i = 0; i < targetsLength; i++){
+                Nodes.update((Nodes.find({'targets.d3id': noded3id}).fetch()[0]._id), {$pull:{targets: {d3id: noded3id}}});
+              }
+              for(var i = 0; i < sourcesLength; i++){
+                Nodes.update((Nodes.find({'sources.d3id': noded3id}).fetch()[0]._id), {$pull:{sources: {d3id: noded3id}}});
+              }
+              Nodes.remove(nodeId);
             }
-            length = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'deleted': true}).fetch().length;
-            for( var i = 0; i < length; i++){
-              Nodes.remove(Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'deleted': true}).fetch()[0]._id);  
-            }
-            Workflows.remove(Workflows.find({'campaignId': currentCampaignName, 'creatorId': Meteor.userId()}).fetch()[0]._id);
-            Workflows.insert(blobObj, function(err) {
-            if(err)
-            console.log(err);
-            });
-          } 
-        } 
-        else {
-          Workflows.insert(blobObj, function(err) {
-            if(err)
-            console.log(err);
-          });
+          }
           var length = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch().length;
           for( var i = 0; i < length; i++){
             var id = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch()[i]._id;  
             Nodes.update(id, {$set:{'saved': "saved"}});
             console.log(i);
           }
-        } 
+          length = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'deleted': true}).fetch().length;
+          for( var i = 0; i < length; i++){
+            var nodeId = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'deleted': true}).fetch()[0]._id;
+            var noded3id = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'deleted': true}).fetch()[0].d3id;
+            var targetsLength = Nodes.find({'targets.d3id': noded3id}).fetch().length;
+            var sourcesLength = Nodes.find({'sources.d3id': noded3id}).fetch().length;
+            for(var i = 0; i < targetsLength; i++){
+              Nodes.update((Nodes.find({'targets.d3id': noded3id}).fetch()[0]._id), {$pull:{targets: {d3id: noded3id}}});
+            }
+            for(var i = 0; i < sourcesLength; i++){
+              Nodes.update((Nodes.find({'sources.d3id': noded3id}).fetch()[0]._id), {$pull:{sources: {d3id: noded3id}}});
+            }
+            Nodes.remove(nodeId);  
+          }
+          Workflows.remove(Workflows.find({'campaignId': currentCampaignName, 'creatorId': Meteor.userId()}).fetch()[0]._id);
+          Workflows.insert(blobObj, function(err) {
+            if(err)
+            console.log(err);
+          }); 
+        }
+      } 
+      else {
+        Workflows.insert(blobObj, function(err) {
+          if(err)
+          console.log(err);
+        });
+        var length = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch().length;
+        console.log(length);
+        console.log(Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch());
+        for( var i = 0; i < length; i++){
+          var id = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch()[0]._id;  
+          Nodes.update(id, {$set:{'saved': "saved"}});
+          console.log(i);
+        }
+      } 
       // saveAs(blob, "mydag.json");
     });
 
@@ -219,7 +249,8 @@ document.onload = (function(d3, saveAs, Blob, undefined){
 
     // handle uploaded data
     d3.select("#reset-input").on("click", function(){
-      console.log("click");
+      sessionStorage.resetWorkflowToLastSaveCounter++;
+      console.log(sessionStorage.resetWorkflowToLastSaveCounter);
     //   document.getElementById("hidden-file-upload").click();
     // });
     // d3.select("#hidden-file-upload").on("change", function(){
@@ -456,6 +487,10 @@ document.onload = (function(d3, saveAs, Blob, undefined){
           .on("blur", function(d){
             d.title = this.textContent;
             // thisGraph.insertTitleLinebreaks(d3node, d.title);
+            while(Nodes.find({'d3id': d.id}).fetch().length!==0){
+              d.id++;
+              console.log(d.id);
+            }
             var adInfo = { 
               title: d.title,
               // campaign: CurrentCampaigns.find({'userId': Meteor.userId()}).fetch()[0].title
@@ -463,7 +498,9 @@ document.onload = (function(d3, saveAs, Blob, undefined){
               campaign:sessionStorage.campaignName,
               saved: "notSaved",
               d3id: d.id,
-              deleted: false
+              deleted: false,
+              targets: [],
+              sources: []
             };
             var errors = validateNode(adInfo); 
             if (errors.title){
@@ -504,6 +541,22 @@ document.onload = (function(d3, saveAs, Blob, undefined){
     thisGraph.dragLine.classed("hidden", true);
 
     if (mouseDownNode !== d){
+      console.log("ola");
+      console.log(mouseDownNode.id)
+      console.log(d.id);
+      var sourceId = Nodes.find({'d3id': mouseDownNode.id}).fetch()[0]._id;
+      var targetId = Nodes.find({'d3id': d.id}).fetch()[0]._id;
+      // var targetsLengthOfSourceNode = Nodes.find({'d3id': mouseDownNode.id}).fetch()[0].targets.length;
+      // var sourcesLengthOfTargetNode = Nodes.find({'d3id': d.id}).fetch()[0].sources.length;
+      // console.log(targetsLengthOfSourceNode);
+      // console.log(sourcesLengthOfTargetNode);
+      // Nodes.update(sourceId, {$set:{'targets.targetsLengthOfSourceNode.d3id': d.id}});
+      // Nodes.update(targetId, {$set:{'sources.sourcesLengthOfTargetNode.d3id': mouseDownNode.id}});
+      // console.log(targetsLengthOfSourceNode);
+      // console.log(sourcesLengthOfTargetNode);
+      Nodes.update(sourceId, {$push:{targets: {d3id: d.id}}});
+      Nodes.update(targetId, {$push:{sources: {d3id: mouseDownNode.id}}});
+      // Nodes.update(targetId, {$push:{sources.d3id: mouseDownNode.id}});
       // we're in a different node: create new edge for mousedown edge and add to graph
       var newEdge = {source: mouseDownNode, target: d};
       var filtRes = thisGraph.paths.filter(function(d){
@@ -614,6 +667,14 @@ document.onload = (function(d3, saveAs, Blob, undefined){
         else{
           // if(Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'd3id': selectedNode.id}).fetch()[0].saved==="notSaved")  
           Nodes.remove(Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'd3id': selectedNode.id}).fetch()[0]._id);
+          var targetsLength = Nodes.find({'targets.d3id': selectedNode.id}).fetch().length;
+          var sourcesLength = Nodes.find({'sources.d3id': selectedNode.id}).fetch().length;
+          for(var i = 0; i < targetsLength; i++){
+            Nodes.update((Nodes.find({'targets.d3id': selectedNode.id}).fetch()[0]._id), {$pull:{targets: {d3id: selectedNode.id}}});
+          }
+          for(var i = 0; i < sourcesLength; i++){
+            Nodes.update((Nodes.find({'sources.d3id': selectedNode.id}).fetch()[0]._id), {$pull:{sources: {d3id: selectedNode.id}}});
+          }
         }
         // if(Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "saved"}).fetch().length === 0)
         // Workflows.remove(Workflows.find({'campaignId': sessionStorage.campaignName, 'creatorId': Meteor.userId()}).fetch()[0]._id);
@@ -672,7 +733,6 @@ document.onload = (function(d3, saveAs, Blob, undefined){
     paths.exit().remove();
     
     // update existing nodes
-    console.log("ola");
     thisGraph.circles = thisGraph.circles.data(thisGraph.nodes, function(d){return d.id;});
     thisGraph.circles.attr("transform", function(d){return "translate(" + d.x + "," + d.y + ")";});
 
@@ -773,8 +833,20 @@ Template.workflow.events({
 Template.workflow.onDestroyed(function(){
   var length = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch().length;
   for( var i = 0; i < length; i++){
-    Nodes.remove(Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch()[0]._id);
+    var nodeId = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch()[0]._id;
+    var noded3id = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch()[0].d3id;
+    var targetsLength = Nodes.find({'targets.d3id': noded3id}).fetch().length;
+    var sourcesLength = Nodes.find({'sources.d3id': noded3id}).fetch().length;
+    console.log(targetsLength);
+    console.log(sourcesLength);
+    for(var i = 0; i < targetsLength; i++){
+      Nodes.update((Nodes.find({'targets.d3id': noded3id}).fetch()[0]._id), {$pull:{targets: {d3id: noded3id}}}); 
+    }
+    for(var i = 0; i < sourcesLength; i++){
+      Nodes.update((Nodes.find({'sources.d3id': noded3id}).fetch()[0]._id), {$pull:{sources: {d3id: noded3id}}});
+    }
     console.log(i);
+    Nodes.remove(nodeId);
   }
   open(Router.current().route.path(), '_self').close();
 });

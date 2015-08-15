@@ -12,9 +12,11 @@ Template.ruleSubmit.helpers({
 Template.ruleSubmit.events({ 
   'submit form': function(e) { 
     e.preventDefault();
+    var ruleCount = (Rules.find({'userId': Meteor.userId(), 'campaign': sessionStorage.campaignName}).fetch().length) + 1;
     // console.log(campaignName);
     var rule = { 
-      ruleNo: $(e.target).find('[id=ruleNo]').val(),
+      ruleNo: ruleCount,
+      // ruleNo: $(e.target).find('[id=ruleNo]').val(),
       gazeTime: $(e.target).find('[id=gazeTime]').val(),
       gender: $(e.target).find('[id=gender]').val(),
       age: $(e.target).find('[id=age]').val(),

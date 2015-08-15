@@ -38,8 +38,16 @@ Template.Rule.events({
   },
   'click .delete': function(e) { 
       e.preventDefault();
-      if (confirm("Delete this Rule?")) { 
+      if (confirm("Delete this Rule?")) {
+        var deletedRuleNo = this.ruleNo; 
         var currentRuleId = this._id; 
+        var ruleCount = Rules.find({'userId': Meteor.userId(), 'campaign':sessionStorage.campaignName}).fetch().length;
+        if(ruleCount>this.ruleNo){
+          for(var i = this.ruleNo + 1; i <= ruleCount; i++){
+            var id = Rules.find({'userId': Meteor.userId(), 'campaign': sessionStorage.campaignName, 'ruleNo': i}).fetch()[0]._id;
+            Rules.update(id, {$set:{'ruleNo': i - 1}});
+          }
+        }
         Rules.remove(currentRuleId);
       }
   }

@@ -1,7 +1,14 @@
 Template.workflow.onCreated(function() { 
   Session.set('nodeSubmitErrors', {});
   sessionStorage.resetWorkflowToLastSaveCounter = 0;
-  console.log(sessionStorage.resetWorkflowToLastSaveCounter);
+  var ruleCount = Rules.find({'userId': Meteor.userId(), 'campaign':sessionStorage.campaignName}).fetch().length;
+  if(ruleCount!==0)
+  sessionStorage.formCreator = "<input type=checkbox id=check1>1</input>";
+  for(var i = 2; i <= ruleCount; i++){
+    sessionStorage.formCreator = sessionStorage.formCreator + "<input type=checkbox id=check" + i + ">" + i + "</input>"
+  }
+  // sessionStorage.formCreator = sessionStorage.formCreator + "<input type=button id=formSubmit onclick=window.hello=function(){document.getElementById(&quot;form1&quot).style.display=&quot;none&quot;;};hello()>Submit</input>";
+  sessionStorage.formCreator = sessionStorage.formCreator + "<input type=button id=formSubmit>Submit</input>";
 });
 Template.workflow.helpers({ 
   errorMessage: function(field) {
@@ -9,7 +16,19 @@ Template.workflow.helpers({
   },
   errorClass: function (field) {
     return !!Session.get('nodeSubmitErrors')[field] ? 'has-error' : '';
-  } 
+  },
+  sameCampaign:function() {
+    return this.campaign === sessionStorage.campaignName;
+  },
+  rules:function() {
+    return Rules.find()
+  },
+  ownRule:function() {
+    return this.userId === Meteor.userId();
+  },
+  ruleNumber: function() {
+    return this.ruleNo;
+  }
 });
 Template.workflow.onRendered(function(){
   $.getScript("http://d3js.org/d3.v3.js", function(){
@@ -17,6 +36,9 @@ Template.workflow.onRendered(function(){
   }),
   $.getScript("http://cdn.jsdelivr.net/filesaver.js/0.1/FileSaver.min.js", function(){
     console.log("Script 2 loaded");
+  }),
+  $.getScript(function newVisibility(){
+    console.log("arvind");
   })
   // $.getScript("http://upload-icon.png", function(){
   //   console.log("Script 3 loaded");
@@ -27,7 +49,11 @@ Template.workflow.onRendered(function(){
   // $.getScript("trash-icon.png", function(){
   //   console.log("Script 5 loaded");
   // })
-
+function newVisibility() {
+        console.log("sup");
+        // if(thisGraph.edges!==0)
+        // document.getElementById("form1").style.display="none";
+};
 document.onload = (function(d3, saveAs, Blob, undefined){
   "use strict";
   var nodeInsertSuccess=false;
@@ -88,6 +114,30 @@ document.onload = (function(d3, saveAs, Blob, undefined){
     // svg nodes and edges 
     thisGraph.paths = svgG.append("g").selectAll("g");
     thisGraph.circles = svgG.append("g").selectAll("g");
+    thisGraph.texts = svgG.append("g").selectAll("g");
+
+    // node labels
+    
+    thisGraph.linkText = svgG.append("g").selectAll("g")
+    .data(thisGraph.edges)
+    .append("text")
+    .attr("font-family", "Arial, Helvetica, sans-serif")
+    .attr("x", function(d) {
+        if (d.target.x > d.source.x) {
+            return (d.source.x + (d.target.x - d.source.x)/2); }
+        else {
+            return (d.target.x + (d.source.x - d.target.x)/2); }
+    })
+    .attr("y", function(d) {
+        if (d.target.y > d.source.y) {
+            return (d.source.y + (d.target.y - d.source.y)/2); }
+        else {
+            return (d.target.y + (d.source.y - d.target.y)/2); }
+    })
+    .attr("fill", "Black")
+    .style("font", "normal 12px Arial")
+    .attr("dy", ".35em")
+    .text(function(d) { return "arvind"; });
 
     thisGraph.drag = d3.behavior.drag()
           .origin(function(d){
@@ -357,6 +407,14 @@ document.onload = (function(d3, saveAs, Blob, undefined){
     sel.addRange(range);
   };
 
+  /* select all text in element: taken from http://stackoverflow.com/questions/6139107/programatically-select-text-in-a-contenteditable-html-element */
+  GraphCreator.prototype.selectELementEdgeContents = function(el) {
+    var range = document.createRange();
+    range.selectEdgeContents(el);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  };
 
   /* insert svg line breaks: taken from http://stackoverflow.com/questions/13241475/how-do-i-include-newlines-in-labels-in-d3-charts */
   GraphCreator.prototype.insertTitleLinebreaks = function (gEl, title) {
@@ -392,6 +450,7 @@ document.onload = (function(d3, saveAs, Blob, undefined){
       thisGraph.removeSelectFromEdge();
     }
     thisGraph.state.selectedEdge = edgeData;
+    document.getElementById("form1").style.display="inline";
   };
 
   GraphCreator.prototype.replaceSelectNode = function(d3Node, nodeData){
@@ -489,7 +548,6 @@ document.onload = (function(d3, saveAs, Blob, undefined){
             // thisGraph.insertTitleLinebreaks(d3node, d.title);
             while(Nodes.find({'d3id': d.id}).fetch().length!==0){
               d.id++;
-              console.log(d.id);
             }
             var adInfo = { 
               title: d.title,
@@ -504,8 +562,8 @@ document.onload = (function(d3, saveAs, Blob, undefined){
             };
             var errors = validateNode(adInfo); 
             if (errors.title){
-              return Session.set('nodeSubmitErrors', errors);
               throwError('This ad does not exist for this campaign');
+              return Session.set('nodeSubmitErrors', errors);
             }
             Meteor.call('nodeInsert', adInfo, function(error, result) { // display the error to the user and abort
               if (error) {
@@ -525,6 +583,79 @@ document.onload = (function(d3, saveAs, Blob, undefined){
     return d3txt;
   };
 
+  //place editable text on edge instead of svg text
+  // GraphCreator.prototype.changeTextOfEdge = function(d3path, d){
+  //   var thisGraph= this,
+  //       consts = thisGraph.consts,
+  //       htmlEl = d3path.edge();
+  //       d3path.selectAll("text").remove();
+  //       var pathBCR = htmlEl.getBoundingClientRect(),
+  //       curScale = pathBCR.width/consts.pathRadius,
+  //       placePad  =  5*curScale,
+  //       useHW = curScale > 1 ? pathBCR.width*0.71 : consts.pathRadius*1.42;
+  //       // replace with editableconent text
+  //       var d3txt = thisGraph.svg.selectAll("foreignObject") 
+  //         .data([d])
+  //         .enter()
+  //         .append("foreignObject")
+  //         .attr("x", pathBCR.left + placePad )
+  //         .attr("y", pathBCR.top + placePad)
+  //         .attr("height", 2*useHW)
+  //         .attr("width", useHW)
+  //         .append("xhtml:p")
+  //         .attr("id", consts.activeEditId)
+  //         .attr("contentEditable", "true")
+  //         .text("arvind")
+  //         .on("mousedown", function(edgeData){
+  //           d3.event.stopPropagation();
+  //         })
+  //         .on("keydown", function(edgeData){
+  //           d3.event.stopPropagation();
+  //           if (d3.event.keyCode == consts.ENTER_KEY && !d3.event.shiftKey){
+  //             this.blur();
+  //           }
+  //         })
+  //         .on("blur", function(d){
+  //           d.title = this.textContent;
+            // thisGraph.insertTitleLinebreaks(d3node, d.title);
+            // while(Nodes.find({'d3id': d.id}).fetch().length!==0){
+            //   d.id++;
+            //   console.log(d.id);
+            // }
+            // var adInfo = { 
+            //   title: d.title,
+              // campaign: CurrentCampaigns.find({'userId': Meteor.userId()}).fetch()[0].title
+              // campaign:campaignName
+            //   campaign:sessionStorage.campaignName,
+            //   saved: "notSaved",
+            //   d3id: d.id,
+            //   deleted: false,
+            //   targets: [],
+            //   sources: []
+            // };
+            // var errors = validateNode(adInfo); 
+            // if (errors.title){
+            //   throwError('This ad does not exist for this campaign');
+            //   return Session.set('nodeSubmitErrors', errors);
+            // }
+            // Meteor.call('nodeInsert', adInfo, function(error, result) { // display the error to the user and abort
+            //   if (error) {
+            //     nodeInsertSuccess=false;
+            //     // this.state.graphMouseDown = false;
+            //     return throwError(error.reason);
+            //   }
+            //   else{
+            //     nodeInsertSuccess=true;
+            //     thisGraph.insertTitleLinebreaks(d3node, d.title);
+            //     Session.set('nodeSubmitErrors', {});
+            //   }
+            // });
+  //           console.log(d.title);
+  //           d3.select(this.parentElement).remove();
+  //         });
+  //   return d3txt;
+  // };
+
   // mouseup on nodes
   GraphCreator.prototype.circleMouseUp = function(d3node, d){
     var thisGraph = this,
@@ -541,7 +672,6 @@ document.onload = (function(d3, saveAs, Blob, undefined){
     thisGraph.dragLine.classed("hidden", true);
 
     if (mouseDownNode !== d){
-      console.log("ola");
       console.log(mouseDownNode.id)
       console.log(d.id);
       var sourceId = Nodes.find({'d3id': mouseDownNode.id}).fetch()[0]._id;
@@ -568,6 +698,12 @@ document.onload = (function(d3, saveAs, Blob, undefined){
       if (!filtRes[0].length){
         thisGraph.edges.push(newEdge);
         thisGraph.updateGraph();
+      //   var d3txt = thisGraph.changeTextOfEdge(thisGraph.edges.filter(function(dval){
+      //   return dval.id === d.id;
+      // }), d),
+      //     txtEdge = d3txt.path();
+      // thisGraph.selectElementEdgeContents(txtEdge);
+      // txtEdge.focus();
       }
     } else{
       // we're in the same node
@@ -659,7 +795,6 @@ document.onload = (function(d3, saveAs, Blob, undefined){
         thisGraph.spliceLinksForNode(selectedNode);
         state.selectedNode = null;
         thisGraph.updateGraph();
-        console.log("ola");
         if(Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'd3id': selectedNode.id}).fetch()[0].saved==="saved"){
           var id = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'd3id': selectedNode.id}).fetch()[0]._id;  
           Nodes.update(id, {$set:{'deleted': true}});
@@ -727,11 +862,201 @@ document.onload = (function(d3, saveAs, Blob, undefined){
       )
       .on("mouseup", function(d){
         state.mouseDownLink = null;
-      });
+      })
+      .attr("id","path1");
+
+      // paths.append("foreignObject")
+      // .attr("x", 50)
+      // .attr("y", 50)
+      // .attr("height", 150)
+      // .attr("width", 200)
+      // .append("body")
+      // .attr("xmln", "http://www.w3.org/1999/xhtml")
+      // .append("form")
+      // .append("input")
+      // .attr("type", "text");
+
+      thisGraph.texts = thisGraph.texts.data(thisGraph.edges);
+      var texts = thisGraph.texts;
+      texts.append("text");
+
+      var newTexts = thisGraph.svg.selectAll("foreignObject")
+      .data(thisGraph.edges)
+      .enter()
+      .append("foreignObject")
+      .attr("x", function(d) {
+        if (d.target.x > d.source.x) {
+          return (d.source.x + (d.target.x - d.source.x)/2); }
+        else {
+          return (d.target.x + (d.source.x - d.target.x)/2); }
+      })
+      .attr("y", function(d) {
+        if (d.target.y > d.source.y) {
+          return (+ 30 + d.source.y + (d.target.y - d.source.y)/2); }
+        else {
+          return (+ 30 + d.target.y + (d.source.y - d.target.y)/2); }
+      })
+      .attr("height", 150)
+      .attr("width", 200)
+      .append("xhtml:form")
+      .attr("id","form1")
+      .attr("style","display:block")
+      // .html("<input type=checkbox id=check1>ola</input><input type=checkbox name=check2>hi</input><input type=button onclick=newVisibility()></input>");
+      // .html("<input type=checkbox id=check1>ola</input><input type=checkbox id=check2>hi</input><input type=button name=submit onclick=window.hello=function(){document.getElementById(&quot;form1&quot).style.display=&quot;none&quot;;console.log(&quot;arvind&quot;);};hello()>Submit</input>");
+      .html(sessionStorage.formCreator);
+
+      if(document.getElementById("formSubmit")!==null)
+      document.getElementById("formSubmit").onclick = function(){
+        thisGraph.updateGraph();
+        document.getElementById("form1").style.display="none";
+        d3.select(this.parentElement).remove();
+      };
+
+      function newVisibility() {
+        console.log("sup");
+        // if(thisGraph.edges!==0)
+        // document.getElementById("form1").style.display="none";
+      }
+      // .html("<input type=checkbox id=check1>hi</input>")
+      // .append("xhtml:p")
+      // .html("<input type=checkbox id=check2>ola2</input>")
+      // .append("xhtml:p")
+      // .html("<input type=submit value=Submit>ola2</input>");
+      // .html("<p>{{#each rules}} {{#if ownRule}} {{#if sameCampaign}} <form><input type=checkbox id=check>{{ruleNumber}}</input></form> {{/if}} {{/if}} {{/each}} </p>");
+
+      var checkCountString ="";
+      var checkCount = $("input:checkbox:checked").length;
+      var ruleCount = Rules.find({'userId': Meteor.userId(), 'campaign':sessionStorage.campaignName}).fetch().length;
+      for(var i = 1; i <= ruleCount; i++){
+        if(checkCount == 1){
+          if($('#check'+i).is(":checked"))
+          checkCountString = "Rule "+ i +" ";
+        }
+        else{
+          if($('#check'+i).is(":checked"))
+          checkCountString = checkCountString + "Rule " + i + " or "; 
+          if(i == ruleCount)
+          checkCountString = checkCountString.substring(0, checkCountString.length - 4);
+        }
+      }
+      console.log(checkCount);
+      console.log($('#check1').is(":checked"));
+      console.log($('#check2').is(":checked"));
+      // .data(thisGraph.edges)
+      // .attr("font-family", "Arial, Helvetica, sans-serif")
+      // .attr("x", function(d) {
+      //   if (d.target.x > d.source.x) {
+      //       console.log(d.target.x);
+      //       console.log(d.source.x);
+      //       return (d.source.x + (d.target.x - d.source.x)/2); }
+      //   else {
+      //     console.log(d.target.x);
+      //       console.log(d.source.x);
+      //       return (d.target.x + (d.source.x - d.target.x)/2); }
+      // })
+      // .attr("y", function(d) {
+      //   if (d.target.y > d.source.y) {
+      //       return (d.source.y + (d.target.y - d.source.y)/2); }
+      //   else {
+      //       return (d.target.y + (d.source.y - d.target.y)/2); }
+      // })
+      // .attr("fill", "Black")
+      // .style("font", "normal 12px Arial")
+      // .attr("dy", ".35em")
+      // .attr("x",200)
+      // .attr("dy", "0.35em");
+      // .attr("text-anchor","middle");
+      
+      texts.enter()
+            .append("text")
+            .attr("contentEditable", "true")
+            .attr("font-family", "Arial, Helvetica, sans-serif")
+            .attr("fill", "Red")
+            .style("font", "normal 20px Arial")
+            .attr("x", function(d) {
+            if (d.target.x > d.source.x) {
+              return (d.source.x + (d.target.x - d.source.x)/2); }
+            else {        
+              return (d.target.x + (d.source.x - d.target.x)/2); }
+            })
+            .attr("y", function(d) {
+            if (d.target.y > d.source.y) {
+              return (-15 + d.source.y + (d.target.y - d.source.y)/2); }
+            else {
+              return (-15 + d.target.y + (d.source.y - d.target.y)/2); }
+            })
+            // .attr("dy", "0.35em")
+            // .attr("stroke","white")
+            .attr("xlink:href","#path1")
+            .text(checkCountString);
+            // .text(function(d) { return d.text })
+            // .on("keyup", function(d) { d.text = d3.select(this).text(); });
+
+      texts.attr("x", function(d) {
+            if (d.target.x > d.source.x) {
+              return (d.source.x + (d.target.x - d.source.x)/2); }
+            else {
+              return (d.target.x + (d.source.x - d.target.x)/2); }
+            })
+            .attr("y", function(d) {
+            if (d.target.y > d.source.y) {
+              return (-15 + d.source.y + (d.target.y - d.source.y)/2); }
+            else {
+              return (-15 + d.target.y + (d.source.y - d.target.y)/2); }
+            })
+            .text(checkCountString);
+
+      texts.exit().remove();
+    // paths.append("text")
+    //   .attr("font-family", "Arial, Helvetica, sans-serif")
+    //   .attr("x", function(d) {
+    //     if (d.target.x > d.source.x) {
+    //         return (d.source.x + (d.target.x - d.source.x)/2); }
+    //     else {
+    //         return (d.target.x + (d.source.x - d.target.x)/2); }
+    //   })
+    //   .attr("y", function(d) {
+    //     if (d.target.y > d.source.y) {
+    //         return (d.source.y + (d.target.y - d.source.y)/2); }
+    //     else {
+    //         return (d.target.y + (d.source.y - d.target.y)/2); }
+    //   })
+    //   .attr("fill", "Black")
+    //   .style("font", "normal 12px Arial")
+    //   .attr("dy", ".35em")
+    //   .text(function(d) { return "arvind"; });
 
     // remove old links
     paths.exit().remove();
     
+    // node labels
+    
+    thisGraph.linkText = thisGraph.linkText.data(thisGraph.edges, function(d){return d;});
+    thisGraph.linkText.enter()
+    .append("linkText")
+    .data(thisGraph.edges)
+    .append("text")
+    .attr("font-family", "Arial, Helvetica, sans-serif")
+    .attr("x", function(d) {
+        if (d.target.x > d.source.x) {
+            return (d.source.x + (d.target.x - d.source.x)/2); }
+        else {
+            return (d.target.x + (d.source.x - d.target.x)/2); }
+    })
+    .attr("y", function(d) {
+        if (d.target.y > d.source.y) {
+            return (d.source.y + (d.target.y - d.source.y)/2); }
+        else {
+            return (d.target.y + (d.source.y - d.target.y)/2); }
+    })
+    .attr("fill", "Black")
+    .style("font", "normal 12px Arial")
+    .attr("dy", ".35em")
+    .text(function(d) { return "arvind"; });
+  
+    // thisGraph.linkText = thisGraph.linkText.data(thisGraph.edges, function(d){return d;});
+    thisGraph.linkText.attr("transform", function(d){return "translate(" + (d.source.x + d.target.x) / 2 + "," + (d.source.y + d.target.y) / 2 + ")";});
+
     // update existing nodes
     thisGraph.circles = thisGraph.circles.data(thisGraph.nodes, function(d){return d.id;});
     thisGraph.circles.attr("transform", function(d){return "translate(" + d.x + "," + d.y + ")";});

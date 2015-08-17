@@ -16,3 +16,4 @@ Meteor.publish('campaigns', function(){ return Campaigns.find();});
 Meteor.publish('rules', function(){ return Rules.find();});
 Meteor.publish('nodes', function(){ return Nodes.find();});
 Meteor.publish('workflows', function(){ return Workflows.find();});
+Meteor.publish('edges', function(){ return Edges.find();});

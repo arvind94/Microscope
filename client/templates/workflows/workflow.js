@@ -123,6 +123,8 @@ Template.workflow.onRendered(function(){
       svg.on("mousedown", function(d){thisGraph.svgMouseDown.call(thisGraph, d);});
       svg.on("mouseup", function(d){thisGraph.svgMouseUp.call(thisGraph, d);});
 
+      // used for graph resizing on scrolling, but removed to implement scrollbar
+
       // listen for dragging
       var dragSvg = d3.behavior.zoom()
             .on("zoom", function(){
@@ -189,7 +191,6 @@ Template.workflow.onRendered(function(){
               for(var i = 0; i < numberOfAds; i++){
                 if(adTitle==(Uploads.find({'campaignId': sessionStorage.campaignName, 'creatorId': Meteor.userId()}).fetch()[i].original.name)){
                   adPresenceCounter++;
-                  console.log("hi");
                 }
               }
               console.log(adPresenceCounter);
@@ -468,7 +469,6 @@ Template.workflow.onRendered(function(){
             for(var i = 0; i < numberOfAds; i++){              
               if(adTitle==(Uploads.find({'campaignId': sessionStorage.campaignName, 'creatorId': Meteor.userId()}).fetch()[i].original.name)){
                 adPresenceCounter++;
-                console.log("hi");
               }
             }
             if(adPresenceCounter==0){
@@ -1075,7 +1075,8 @@ Template.workflow.onRendered(function(){
         if (!filtRes[0].length){
           thisGraph.edges.push(newEdge);
           // updating edge id so as to not coincide with previously saved edge ids
-          while(Edges.find({'d3id': newEdge.id}).fetch().length!==0){
+          // while(Edges.find({'d3id': newEdge.id}).fetch().length!==0){
+          while(Edges.find({'userId': Meteor.userId(), 'campaign': sessionStorage.campaignName, 'd3id': newEdge.id}).fetch().length!==0){  
             newEdge.id++;
           }
           // converting id property of new edge to string because serves expects id in string format
@@ -1614,11 +1615,21 @@ Template.workflow.onRendered(function(){
     var nodes = [];
     //sets initial edges to 0
     var edges = [];
-    // binds svg to page body
-    var svg = d3.select("body").append("svg")
+    // binds svg to alignment div
+    var svg = d3.select("#svg-aligner").append("svg")
           // sets width and height of svg canvas
-          .attr("width", width)
-          .attr("height", height);
+          .attr("width", 1100)
+          .attr("height", 2000);
+    // draws svg boundary
+    svg.append("rect")
+      .attr("x", 0)
+      .attr("y", 0)      
+      .attr("width", 1100)
+      .attr("height", 2000)
+      .style("stroke", 'black')
+      .style("stroke-width", 1)
+      .style("fill", "none");
+    
     var graph = new GraphCreator(svg, nodes, edges);
         graph.setIdCt(0);
     graph.updateGraph();
@@ -1657,7 +1668,6 @@ Template.workflow.onDestroyed(function(){
       Nodes.update((Nodes.find({'sources.d3id': noded3id}).fetch()[0]._id), {$pull:{sources: {d3id: noded3id}}});
     }
     // actually removes unsaved node from node collection
-    console.log("hi");
     Nodes.remove(nodeId);
     var edgeLength = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId()}).fetch().length;
     for( var j = 0; j < edgeLength; j++){

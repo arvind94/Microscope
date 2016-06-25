@@ -17,7 +17,15 @@ Template.workflow.onCreated(function() {
   sessionStorage.priorityForm = "<input type=checkbox id=check1>1</input>";
   sessionStorage.priorityCountString = "";
   sessionStorage.checkCountString = "";
-  sessionStorage.numberofedges = Edges.find({'userId': Meteor.userId(), 'campaign': sessionStorage.campaignName}).fetch().length;
+  // edge d3id storage device
+  var edged3ids = [];
+  var length = Edges.find({'userId': Meteor.userId(), 'campaign': sessionStorage.campaignName}).fetch().length;
+  for (var i =0; i < length; i++){
+    edged3ids[i] = Edges.find({'userId': Meteor.userId(), 'campaign': sessionStorage.campaignName}).fetch()[i].d3id;
+  }
+  // sessionStorage.numberofedges = Edges.find({'userId': Meteor.userId(), 'campaign': sessionStorage.campaignName}).fetch().length;
+  // ensures that d3ids of edges don't coincide due to deletion of edges
+  sessionStorage.numberofedges = Math.max(edged3ids)+1;
 });
 
 Template.workflow.helpers({ 
@@ -114,12 +122,10 @@ Template.workflow.onRendered(function(){
             });
 
       // listen for key events
-      d3.select(window).on("keydown", function(){
-        thisGraph.svgKeyDown.call(thisGraph);
-      })
-      .on("keyup", function(){
-        thisGraph.svgKeyUp.call(thisGraph);
-      });
+      d3.select(window)
+      .on("keydown", function(){thisGraph.svgKeyDown.call(thisGraph);})
+      .on("keyup", function(){thisGraph.svgKeyUp.call(thisGraph);});
+
       svg.on("mousedown", function(d){thisGraph.svgMouseDown.call(thisGraph, d);});
       svg.on("mouseup", function(d){thisGraph.svgMouseUp.call(thisGraph, d);});
 
@@ -174,8 +180,17 @@ Template.workflow.onRendered(function(){
             // replacing old workflow with the new one if edge priorities make sense
             var priorityRedundancyCheck = false;
             var priorityOrderingCheck = false;
+            // checks that all rules on edges in graph do actually exist before saving
             var ruleCheck = false;            
+            // checks that all nodes in graph do actually exist as ads before saving
             var adCheck = false;
+            // checks that no nodes or edges are being edited while saving
+            var editablilityCheck = false;
+            // throws error if node or edge is being edited at time of saving
+            if((document.getElementById("form1")!==null)||(document.getElementById("form2")!==null)||(svg.selectAll("foreignObject")[0][0]!==undefined)){
+              editablilityCheck = true;
+              throwError("Workflow cannot be saved while nodes or edges are being edited, please finish editing");
+            }
             // stores number of ads in existence in current campaign
             var numberOfAds = Uploads.find({'campaignId': sessionStorage.campaignName, 'creatorId': Meteor.userId()}).fetch().length;
             var length = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "saved",'deleted':false}).fetch().length;
@@ -296,7 +311,7 @@ Template.workflow.onRendered(function(){
             if(adCheck==true){
               throwError("There are non-existent nodes (ads) in your workflow");
             }
-            if((adCheck === false)&&(priorityRedundancyCheck === false)&&(priorityOrderingCheck === false)&&(ruleCheck === false)){
+            if((adCheck === false)&&(priorityRedundancyCheck === false)&&(priorityOrderingCheck === false)&&(ruleCheck === false)&&(editablilityCheck === false)){
               Workflows.remove(Workflows.find({'campaignId': currentCampaignName, 'creatorId': Meteor.userId()}).fetch()[0]._id);
               Workflows.insert(blobObj, function(err) {
                 if(err)
@@ -331,29 +346,29 @@ Template.workflow.onRendered(function(){
               }
               // situation when previously saved workflow is uploaded and modified
               // saving all unsaved nodes from current session
-              var length = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch().length;
+              var length = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved", 'deleted': false}).fetch().length;
               for( var i = 0; i < length; i++){
-                var id = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch()[0]._id;  
+                var id = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved", 'deleted': false}).fetch()[0]._id;  
                 Nodes.update(id, {$set:{'saved': "saved"}});
                 console.log(i);
               }
               // saving all unsaved edges from current session
-              length = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch().length;
+              length = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved", 'deleted': false}).fetch().length;
               for( var i = 0; i < length; i++){
-                var id = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch()[0]._id;
-                var oldRule = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch()[0].rules;
-                var oldPriority = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch()[0].priority;
+                var id = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved", 'deleted': false}).fetch()[0]._id;
+                var oldRule = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved", 'deleted': false}).fetch()[0].rules;
+                var oldPriority = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved", 'deleted': false}).fetch()[0].priority;
                 Edges.update(id, {$set:{'saved': "saved"}});
                 Edges.update(id, {$set:{'oldRules': oldRule}});
                 Edges.update(id, {$set:{'oldPriority': oldPriority}});
                 console.log(i);
               }
               // changing oldPriorities of modified saved edges
-              length = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "saved"}).fetch().length;
+              length = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "saved", 'deleted': false}).fetch().length;
               for( var i = 0; i < length; i++){
-                var id = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "saved"}).fetch()[i]._id;
-                var oldRule = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "saved"}).fetch()[i].rules;
-                var oldPriority = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "saved"}).fetch()[i].priority;                
+                var id = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "saved", 'deleted': false}).fetch()[i]._id;
+                var oldRule = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "saved", 'deleted': false}).fetch()[i].rules;
+                var oldPriority = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "saved", 'deleted': false}).fetch()[i].priority;                
                 Edges.update(id, {$set:{'oldRules': oldRule}});
                 Edges.update(id, {$set:{'oldPriority': oldPriority}});
                 console.log(i);
@@ -412,11 +427,11 @@ Template.workflow.onRendered(function(){
               }
             }
             else{
-              length = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "saved"}).fetch().length;
+              length = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "saved", 'deleted': false}).fetch().length;
               for( var i = 0; i < length; i++){
-                var id = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "saved"}).fetch()[0]._id;
-                var oldRule = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "saved"}).fetch()[0].oldRules;
-                var oldPriority = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "saved"}).fetch()[0].oldPriority;
+                var id = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "saved", 'deleted': false}).fetch()[0]._id;
+                var oldRule = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "saved", 'deleted': false}).fetch()[0].oldRules;
+                var oldPriority = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "saved", 'deleted': false}).fetch()[0].oldPriority;
                 Edges.update(id, {$set:{'rules': oldRule}});
                 Edges.update(id, {$set:{'priority': oldPriority}});
                 console.log(i);
@@ -455,8 +470,17 @@ Template.workflow.onRendered(function(){
           var length = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(),'deleted':false}).fetch().length;
           var priorityRedundancyCheck = false;
           var priorityOrderingCheck = false;
-          var ruleCheck = false;
-          var adCheck = false;
+          // checks that all rules on edges in graph do actually exist before saving
+          var ruleCheck = false;            
+          // checks that all nodes in graph do actually exist as ads before saving
+          var adCheck = false;  
+          // checks that no nodes or edges are being edited while saving
+          var editablilityCheck = false;
+          // throws error if node or edge is being edited at time of saving
+          if((document.getElementById("form1")!==null)||(document.getElementById("form2")!==null)||(svg.selectAll("foreignObject")[0][0]!==undefined)){
+            editablilityCheck = true;
+            throwError("Workflow cannot be saved while nodes or edges are being edited, please finish editing");
+          }
           // stores number of ads in existence in current campaign
           var numberOfAds = Uploads.find({'campaignId': sessionStorage.campaignName, 'creatorId': Meteor.userId()}).fetch().length;
           for( var x = 0; x < length; x++){
@@ -582,23 +606,23 @@ Template.workflow.onRendered(function(){
             throwError("There are non-existent nodes (ads) in your workflow");
           }
           // when edges are ordered correctly
-          if((adCheck === false)&&(priorityRedundancyCheck === false)&&(priorityOrderingCheck === false)&&(ruleCheck === false)){
+          if((adCheck === false)&&(priorityRedundancyCheck === false)&&(priorityOrderingCheck === false)&&(ruleCheck === false)&&(editablilityCheck === false)){
             Workflows.insert(blobObj, function(err) {
               if(err)
               console.log(err);
             });
             // saving all unsaved nodes
-            var length = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch().length;
+            var length = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved", 'deleted': false}).fetch().length;
             for( var i = 0; i < length; i++){
-              var id = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch()[0]._id;  
+              var id = Nodes.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved", 'deleted': false}).fetch()[0]._id;  
               Nodes.update(id, {$set:{'saved': "saved"}});
             }
             // saving all unsaved edges and updating edge oldPriorities and oldRules current priorities and rules
-            length = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch().length;
+            length = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved", 'deleted': false}).fetch().length;
             for( var i = 0; i < length; i++){
-              var id = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch()[0]._id;  
-              var oldRule = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch()[0].rules;
-              var oldPriority = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved"}).fetch()[0].priority;
+              var id = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved", 'deleted': false}).fetch()[0]._id;  
+              var oldRule = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved", 'deleted': false}).fetch()[0].rules;
+              var oldPriority = Edges.find({'campaign': sessionStorage.campaignName, 'userId': Meteor.userId(), 'saved': "notSaved", 'deleted': false}).fetch()[0].priority;
               Edges.update(id, {$set:{'saved': "saved"}});
               Edges.update(id, {$set:{'oldRules': oldRule}});
               Edges.update(id, {$set:{'oldPriority': oldPriority}});
@@ -611,64 +635,72 @@ Template.workflow.onRendered(function(){
 
       // handle uploaded data
       d3.select("#reset-input").on("click", function(){
-        // updates reset to last save button click counter
-        sessionStorage.resetWorkflowToLastSaveCounter++;
-        // code below uses file reader to read .json file uploaded by user and draws graph
-      //   document.getElementById("hidden-file-upload").click();
-      // });
-      // d3.select("#hidden-file-upload").on("change", function(){
-      //   if (window.File && window.FileReader && window.FileList && window.Blob) {
-      //     console.log(this.files[0]);
-      //     // var uploadFile = this.files[0];
-      //     var uploadFile = Workflows.find({'_id':"2xdZ45oBHsm9bzEFd"}).fetch()[0].secBlob;
-      //     console.log(Workflows.find({'_id':"2xdZ45oBHsm9bzEFd"}).fetch()[0].secBlob);
-      //     // var uploadFile = Workflows.find({'_id':"ZA8kDBXZqoX3CdeKB"}).mainBlob;
-      //     var filereader = new window.FileReader();
-          
-      //     filereader.onload = function(){
-        // var currentCampaignName = CurrentCampaigns.find({'userId': Meteor.userId()}).fetch()[0].title;
-        var currentCampaignName = sessionStorage.campaignName;
-        // storing previous workflow graph state in txtRes variable
-        var txtRes = Workflows.find({'campaignId': currentCampaignName, 'creatorId': Meteor.userId()}).fetch()[0].secBlob;
-        // var txtRes = Workflows.find({'campaignId': campaignName, 'creatorId': Meteor.userId()}).fetch()[0].secBlob;
-          // TODO better error handling
-          try{
-            // uses json parse to parse json file
-            var jsonObj = JSON.parse(txtRes);
-            // deletes current graph
-            thisGraph.deleteGraph(true);
-            // stores node info
-            thisGraph.nodes = jsonObj.nodes;
-            // stores edge rule label info
-            thisGraph.texts = jsonObj.texts;
-            // stores edge priority label info
-            thisGraph.priorityTexts = jsonObj.priorityTexts;
+        var editablilityCheck = false;
+        // updates reset to last save button click counter if no nodes or edges are currently being edited
+        if((document.getElementById("form1")!==null)||(document.getElementById("form2")!==null)||(svg.selectAll("foreignObject")[0][0]!==undefined)){
+          editablilityCheck = true;
+          throwError("Workflow cannot be saved while nodes or edges are being edited, please finish editing");
+        }
+        // only if nodes or edges are not being edited
+        if(editablilityCheck === false){
+          sessionStorage.resetWorkflowToLastSaveCounter++;
+          // code below uses file reader to read .json file uploaded by user and draws graph
+          //   document.getElementById("hidden-file-upload").click();
+          // });
+          // d3.select("#hidden-file-upload").on("change", function(){
+          //   if (window.File && window.FileReader && window.FileList && window.Blob) {
+          //     console.log(this.files[0]);
+          //     // var uploadFile = this.files[0];
+          //     var uploadFile = Workflows.find({'_id':"2xdZ45oBHsm9bzEFd"}).fetch()[0].secBlob;
+          //     console.log(Workflows.find({'_id':"2xdZ45oBHsm9bzEFd"}).fetch()[0].secBlob);
+          //     // var uploadFile = Workflows.find({'_id':"ZA8kDBXZqoX3CdeKB"}).mainBlob;
+          //     var filereader = new window.FileReader();
+              
+          //     filereader.onload = function(){
+          // var currentCampaignName = CurrentCampaigns.find({'userId': Meteor.userId()}).fetch()[0].title;
+          var currentCampaignName = sessionStorage.campaignName;
+          // storing previous workflow graph state in txtRes variable
+          var txtRes = Workflows.find({'campaignId': currentCampaignName, 'creatorId': Meteor.userId()}).fetch()[0].secBlob;
+          // var txtRes = Workflows.find({'campaignId': campaignName, 'creatorId': Meteor.userId()}).fetch()[0].secBlob;
+            // TODO better error handling
+            try{
+              // uses json parse to parse json file
+              var jsonObj = JSON.parse(txtRes);
+              // deletes current graph
+              thisGraph.deleteGraph(true);
+              // stores node info
+              thisGraph.nodes = jsonObj.nodes;
+              // stores edge rule label info
+              thisGraph.texts = jsonObj.texts;
+              // stores edge priority label info
+              thisGraph.priorityTexts = jsonObj.priorityTexts;
 
-            //stores edge info
-            thisGraph.setIdCt(jsonObj.nodes.length + 1);
-            var newEdges = jsonObj.edges;
-            newEdges.forEach(function(e, i){
-              // stores source node, target node, and edge id of each edge
-              newEdges[i] = {source: thisGraph.nodes.filter(function(n){return n.id == e.source;})[0],
-                            target: thisGraph.nodes.filter(function(n){return n.id == e.target;})[0],
-                            id: e.id[0]};
-            });
-            thisGraph.edges = newEdges;
-            thisGraph.texts = thisGraph.svgG.append("g").selectAll("g");
-            thisGraph.priorityTexts = thisGraph.svgG.append("g").selectAll("g");
-            thisGraph.updateGraph();
-          }catch(err){
-            console.log(err.message);
-            window.alert("Error parsing uploaded file\nerror message: " + err.message);
-            return;
-          }
-        //   };
-        //   // filereader.readAsText(uploadFile);
-        //   filereader.readAsText(uploadFile);
-        //  } 
-        //  else {
-        //   alert("Your browser won't let you save this graph -- try upgrading your browser to IE 10+ or Chrome or Firefox.");
-        // }
+              //stores edge info
+              thisGraph.setIdCt(jsonObj.nodes.length + 1);
+              var newEdges = jsonObj.edges;
+              newEdges.forEach(function(e, i){
+                // stores source node, target node, and edge id of each edge
+                newEdges[i] = {source: thisGraph.nodes.filter(function(n){return n.id == e.source;})[0],
+                              target: thisGraph.nodes.filter(function(n){return n.id == e.target;})[0],
+                              id: e.id[0]};
+              });
+              thisGraph.edges = newEdges;
+              thisGraph.texts = thisGraph.svgG.append("g").selectAll("g");
+              thisGraph.priorityTexts = thisGraph.svgG.append("g").selectAll("g");
+              thisGraph.updateGraph();
+            }catch(err){
+              console.log(err.message);
+              window.alert("Error parsing uploaded file\nerror message: " + err.message);
+              return;
+            }
+          //   };
+          //   // filereader.readAsText(uploadFile);
+          //   filereader.readAsText(uploadFile);
+          //  } 
+          //  else {
+          //   alert("Your browser won't let you save this graph -- try upgrading your browser to IE 10+ or Chrome or Firefox.");
+          // }
+        }
       });
 
       // handle delete graph
@@ -788,16 +820,18 @@ Template.workflow.onRendered(function(){
     };
 
     GraphCreator.prototype.replaceSelectEdge = function(d3Path, edgeData){
-      var thisGraph = this;
-      d3Path.classed(thisGraph.consts.selectedClass, true);
-      if (thisGraph.state.selectedEdge){
-        thisGraph.removeSelectFromEdge();
-      }
-      thisGraph.state.selectedEdge = edgeData;
-      // storing edge info in an array so that it can be accessed by the foreign object
-      var selectedEdgeArray = [edgeData];
-      // creating rule form when an edge is selected
-      var newTexts = thisGraph.svg.selectAll("foreignObject")
+      // ensures that rule or priority forms for another edge are not active while reselecting edges
+      if((document.getElementById("form1")==null)&&(document.getElementById("form2")==null)){
+        var thisGraph = this;
+        d3Path.classed(thisGraph.consts.selectedClass, true);
+        if (thisGraph.state.selectedEdge){
+          thisGraph.removeSelectFromEdge();
+        }
+        thisGraph.state.selectedEdge = edgeData;
+        // storing edge info in an array so that it can be accessed by the foreign object
+        var selectedEdgeArray = [edgeData];
+        // creating rule form when an edge is selected
+        var newTexts = thisGraph.svg.selectAll("foreignObject")
           // .data(thisGraph.edges)
           .data(selectedEdgeArray)
           .enter()
@@ -850,8 +884,8 @@ Template.workflow.onRendered(function(){
             document.getElementById("form1").style.display="none";
             d3.select("foreignObject").remove();
             
-            // lists checkboxes for priority based on number of target nodes for a particular source node
-            var priorityCounter = Nodes.find({'d3id': edgeData.source.id}).fetch()[0].targets.length;
+            // lists checkboxes for priority based on number of non deleted edges with node as source node
+            var priorityCounter = Edges.find({'userId': Meteor.userId(), 'campaign': sessionStorage.campaignName, 'deleted': false, 'sourced3id': edgeData.source.id}).fetch().length;
             for(var i = 2; i <= priorityCounter; i++){
             // for(var i = 2; i <= sessionStorage.numberofedges; i++){
               sessionStorage.priorityForm = sessionStorage.priorityForm + "<input type=checkbox id=check" + i + ">" + i + "</input>" 
@@ -903,6 +937,7 @@ Template.workflow.onRendered(function(){
               sessionStorage.priorityForm = "<input type=checkbox id=check1>1</input>";
             };
           };
+      }
     };
 
     GraphCreator.prototype.replaceSelectNode = function(d3Node, nodeData){
@@ -986,7 +1021,7 @@ Template.workflow.onRendered(function(){
             .attr("id", consts.activeEditId)
             .attr("contentEditable", "true")
             .text(d.title)
-            .on("mousedown", function(d){
+            .on("mousedown", function(d){              
               d3.event.stopPropagation();
             })
             .on("keydown", function(d){
@@ -1031,7 +1066,7 @@ Template.workflow.onRendered(function(){
                   thisGraph.insertTitleLinebreaks(d3node, d.title);
                   Session.set('nodeSubmitErrors', {});
                 }
-              });
+              });          
               d3.select(this.parentElement).remove();
             });
       return d3txt;
@@ -1067,8 +1102,19 @@ Template.workflow.onRendered(function(){
         // storing edge info in an array so that it can be accessed by the foreign object
         var newEdgeArray = [newEdge];
         var filtRes = thisGraph.paths.filter(function(d){
+          // situation when there exists edge between a and b, but new edge is drawn from b to a
           if (d.source === newEdge.target && d.target === newEdge.source){
             thisGraph.edges.splice(thisGraph.edges.indexOf(d), 1);
+            // Finds id of original edge from a to b and sets is property as deleted
+            var oldEdgeId = Edges.find({'userId': Meteor.userId(), 'campaign': sessionStorage.campaignName, 'd3id': d.id}).fetch()[0]._id;
+            Edges.update(oldEdgeId, {$set:{'deleted': true}});
+          }
+          // situation when there exists edge between a and b, but new edge is drawn again from a to b
+          if (d.source === newEdge.source && d.target === newEdge.target){
+            thisGraph.edges.splice(thisGraph.edges.indexOf(d), 1);
+            // Finds id of original edge from a to b and sets is property as deleted
+            var oldEdgeId = Edges.find({'userId': Meteor.userId(), 'campaign': sessionStorage.campaignName, 'd3id': d.id}).fetch()[0]._id;
+            Edges.update(oldEdgeId, {$set:{'deleted': true}});
           }
           return d.source === newEdge.source && d.target === newEdge.target && d.id === newEdge.id;
         });
@@ -1160,8 +1206,8 @@ Template.workflow.onRendered(function(){
             // document.getElementById("form1").style.display="none";
             // d3.select("foreignObject").remove();
 
-            // lists checkboxes for priority based on number of target nodes for a particular source node
-            var priorityCounter = Nodes.find({'d3id': mouseDownNode.id}).fetch()[0].targets.length;
+            // lists checkboxes for priority based on number of non deleted edges with node as source node
+            var priorityCounter = Edges.find({'userId': Meteor.userId(), 'campaign': sessionStorage.campaignName, 'deleted': false, 'sourced3id': mouseDownNode.id}).fetch().length;
             for(var i = 2; i <= priorityCounter; i++){
             // for(var i = 2; i <= sessionStorage.numberofedges; i++){
               sessionStorage.priorityForm = sessionStorage.priorityForm + "<input type=checkbox id=check" + i + ">" + i + "</input>" 
@@ -1224,14 +1270,14 @@ Template.workflow.onRendered(function(){
           // dragged, not clicked
           state.justDragged = false;
         } else{
-          // clicked, not dragged
-          if (d3.event.shiftKey){
+          // clicked, not dragged (occurs only when rule or priority forms for another edge are not active)
+          if ((d3.event.shiftKey)&&(document.getElementById("form1")==null)&&(document.getElementById("form2")==null)&&(svg.selectAll("foreignObject")[0][0]==undefined)){
             // shift-clicked node: edit text content
             var d3txt = thisGraph.changeTextOfNode(d3node, d);
             var txtNode = d3txt.node();
             thisGraph.selectElementContents(txtNode);
             txtNode.focus();
-          } else{
+          } else{            
             if (state.selectedEdge){
               thisGraph.removeSelectFromEdge();
             }
@@ -1267,8 +1313,10 @@ Template.workflow.onRendered(function(){
       if (state.justScaleTransGraph) {
         // dragged not clicked
         state.justScaleTransGraph = false;
-      } else if (state.graphMouseDown && d3.event.shiftKey){
-        // clicked not dragged from svg
+      }
+      // creates new node button ensures that rule or priority forms for another edge are not active 
+      else if ((state.graphMouseDown)&&(d3.event.shiftKey)&&(document.getElementById("form1")==null)&&(document.getElementById("form2")==null)&&(svg.selectAll("foreignObject")[0][0]==undefined)){
+        // clicked not dragged from svg        
         var xycoords = d3.mouse(thisGraph.svgG.node()),
             d = {id: thisGraph.idct++, title: "Enter Ad Name", x: xycoords[0], y: xycoords[1]};
         thisGraph.nodes.push(d);

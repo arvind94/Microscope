@@ -27,9 +27,10 @@ Template.ruleSubmit.events({
       campaign: sessionStorage.campaignName
     };
     var errors = validateRule(rule); 
-    if (errors.gazeTime)
-    return Session.set('ruleSubmitErrors', errors);
+    // if (errors.gazeTime)
+    // return Session.set('ruleSubmitErrors', errors);
     Meteor.call('ruleInsert', rule, function(error, result) { // display the error to the user and abort
+      console.log("ola");
       if (error)
       return throwError(error.reason);
       if (result.ruleExists)

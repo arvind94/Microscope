@@ -153,19 +153,25 @@ marker{
 
 g.conceptG circle{
     fill: #F6FBFF;
+    fill-opacity: 1;
     stroke: #333;
     stroke-width: 2px;
 }
 
+/*g.conceptG:hover, g.conceptG.hover_effect circle{*/
 g.conceptG:hover circle{
     fill: rgb(200, 238, 241);
+    fill-opacity: 1;
 }
 
 g.selected circle{
     fill: rgb(250, 232, 255);
+    fill-opacity: 1;
 }
+/*g.selected:hover, g.selected.hover_effect circle{*/
 g.selected:hover circle{
     fill: rgb(250, 232, 255);
+    fill-opacity: 1;
 }
 
 path.link {
@@ -194,7 +200,7 @@ path.link.selected {
   fill: none;
   pointer-events: all;
 }
-.Aligner {
+/*.Aligner {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -202,4 +208,22 @@ path.link.selected {
   max-height:100%;
   height: 2000px;
   overflow: scroll;
+}*/
+.Aligner {
+  display: inline-block;
+  position: relative;
+  width: 100%;
+  padding-bottom: 100%;
+  vertical-align: top;
+  overflow: hidden; 
 }
+.svg-content-responsive {
+  display: inline-block;
+  position: absolute;
+  top: 10px;
+  left: 0;
+}
+/*.hover {
+-webkit-user-select: none;
+-webkit-touch-callout: none;        
+}*/

@@ -19,13 +19,21 @@ Template.workflow.onCreated(function() {
   sessionStorage.checkCountString = "";
   // edge d3id storage device
   var edged3ids = [];
-  var length = Edges.find({'userId': Meteor.userId(), 'campaign': sessionStorage.campaignName}).fetch().length;
+  var length = Edges.find({'userId': Meteor.userId(), 'campaign': sessionStorage.campaignName}).fetch().length;  
   for (var i =0; i < length; i++){
     edged3ids[i] = Edges.find({'userId': Meteor.userId(), 'campaign': sessionStorage.campaignName}).fetch()[i].d3id;
   }
   // sessionStorage.numberofedges = Edges.find({'userId': Meteor.userId(), 'campaign': sessionStorage.campaignName}).fetch().length;
   // ensures that d3ids of edges don't coincide due to deletion of edges
-  sessionStorage.numberofedges = Math.max(edged3ids)+1;
+  if(length==0){
+    // this is because Math.max.apply gives -infinity when the number of existing edges are 0
+    sessionStorage.numberofedges = 1;
+  }
+  else{
+    // Math.max does not work (gives NaN) so changed to Math.max.apply
+    sessionStorage.numberofedges = Math.max.apply(Math, edged3ids)+1;
+  }
+  console.log(sessionStorage.numberofedges);
 });
 
 Template.workflow.helpers({ 
@@ -44,13 +52,13 @@ Template.workflow.onRendered(function(){
   $.getScript("http://cdn.jsdelivr.net/filesaver.js/0.1/FileSaver.min.js", function(){
     console.log("Script 2 loaded");
   })
-
   document.onload = (function(d3, saveAs, Blob, undefined){
     "use strict";
+    // var d3TouchArray;
     // variable to check if node was successfully inserted in node collection
     var nodeInsertSuccess=false;
     // define graphcreator object
-    var GraphCreator = function(svg, nodes, edges){
+    var GraphCreator = function(svg, nodes, edges, boundingBox){
       var thisGraph = this;
           thisGraph.idct = 0;
       
@@ -78,6 +86,7 @@ Template.workflow.onRendered(function(){
         .attr('markerWidth', 3.5)
         .attr('markerHeight', 3.5)
         .attr('orient', 'auto')
+        .style("fill-opacity",1)
         .append('svg:path')
         .attr('d', 'M0,-5L10,0L0,5');
 
@@ -89,6 +98,7 @@ Template.workflow.onRendered(function(){
         .attr('markerWidth', 3.5)
         .attr('markerHeight', 3.5)
         .attr('orient', 'auto')
+        // no fill opacity provided to prevent arrow head from being in place of target node when target node is being moved
         .append('svg:path')
         .attr('d', 'M0,-5L10,0L0,5');
 
@@ -108,12 +118,17 @@ Template.workflow.onRendered(function(){
       thisGraph.circles = svgG.append("g").selectAll("g");
       thisGraph.texts = svgG.append("g").selectAll("g");
       thisGraph.priorityTexts = svgG.append("g").selectAll("g");
-
+      
       thisGraph.drag = d3.behavior.drag()
             .origin(function(d){
+              // alert("drag1");
+              // alert(d.x);
+              // alert(d.y);
               return {x: d.x, y: d.y};
             })
             .on("drag", function(args){
+              // alert("drag2");
+              // alert(args);
               thisGraph.state.justDragged = true;
               thisGraph.dragmove.call(thisGraph, args);
             })
@@ -126,15 +141,193 @@ Template.workflow.onRendered(function(){
       .on("keydown", function(){thisGraph.svgKeyDown.call(thisGraph);})
       .on("keyup", function(){thisGraph.svgKeyUp.call(thisGraph);});
 
+      // document.getElementById("svg-aligner").addEventListener("touchstart", function(d){thisGraph.svgMouseDown.call(thisGraph, d);}, false);
+      // document.getElementById("svgid").addEventListener("touchstart", 
+      //   function (event){
+      //     console.log("yolo1");
+      //     var touches = event.changedTouches,
+      //         first = touches[0],
+      //         type = "mousedown";
+      //     // initMouseEvent(type, canBubble, cancelable, view, clickCount, 
+      //     //                screenX, screenY, clientX, clientY, ctrlKey, 
+      //     //                altKey, shiftKey, metaKey, button, relatedTarget);
+
+      //     var simulatedEvent = document.createEvent("MouseEvent");
+      //     simulatedEvent.initMouseEvent(type, true, true, window, 1, 
+      //                                   first.screenX, first.screenY, 
+      //                                   first.clientX, first.clientY, false, 
+      //                                   false, false, false, 0/*left*/, null);
+
+      //     first.target.dispatchEvent(simulatedEvent);
+      //     event.preventDefault();
+      //   }, false
+      // );
+      // document.getElementById("svg-aligner").addEventListener("touchend", function(d){thisGraph.svgMouseUp.call(thisGraph, d);}, false);
+      // document.getElementById("svgid").addEventListener("touchend", 
+      //   function (event){
+      //     console.log("yolo2");
+      //     var touches = event.changedTouches,
+      //         first = touches[0],
+      //         type = "mouseup";
+      //     // initMouseEvent(type, canBubble, cancelable, view, clickCount, 
+      //     //                screenX, screenY, clientX, clientY, ctrlKey, 
+      //     //                altKey, shiftKey, metaKey, button, relatedTarget);
+
+      //     var simulatedEvent = document.createEvent("MouseEvent");
+      //     simulatedEvent.initMouseEvent(type, true, true, window, 1, 
+      //                                   first.screenX, first.screenY, 
+      //                                   first.clientX, first.clientY, false, 
+      //                                   false, false, false, 0/*left*/, null);
+
+      //     first.target.dispatchEvent(simulatedEvent);
+      //     event.preventDefault();
+      //   }, false
+      // );
+      //svg.addEventListener("touchcancel", handleCancel, false);
+      //svg.addEventListener("touchmove", handleMove, false);
       svg.on("mousedown", function(d){thisGraph.svgMouseDown.call(thisGraph, d);});
-      svg.on("mouseup", function(d){thisGraph.svgMouseUp.call(thisGraph, d);});
+      // svg.on("touchmove", function(event){console.log(event.changedTouches[0].pageX);});
+      
+      // added to enable replication of mouseover and mouseout capabilities (hovering over nodes) on mobile
+      document.addEventListener('touchmove', function(e) {
+        e.preventDefault();
+        // stores x and y coordinates of most recent touch
+        var touchX = e.changedTouches[0].pageX;
+        var touchY = e.changedTouches[0].pageY;
+        // hardcodes class name of hovered node since d3.const variables are not accessible yet
+        var const04 = "connect-node";
+        // gets left and top coordinates of svg in order to compare touch coordinates to the coordinates of transformed nodes
+        // however, the offsets are not required in our case and are unused
+        var xOffset = document.getElementById("svgid").getBoundingClientRect().left;
+        var yOffset = document.getElementById("svgid").getBoundingClientRect().top;
+        // checks whether the touch coordinates overlap with any of the existing nodes on the current graph in use
+        var length = thisGraph.nodes.length;
+        for( var i = 0; i < length; i++){          
+          // ensures that coordinate overlaps are not checked for the node from where the edge (or drag) originates
+          if(thisGraph.state.mouseDownNode!==thisGraph.nodes[i]){
+          // since d3 nodes are transformed we obtain the tranformation matrix used to transform them            
+            var ctm = document.getElementsByClassName("conceptG")[i].getScreenCTM().inverse();
+            // the transformation matrix is [a,b,c,d,e,f]
+            var a = ctm.a;
+            var b = ctm.b;
+            var c = ctm.c;
+            var d = ctm.d;
+            var e = ctm.e;
+            var f = ctm.f;
+            // Transformation applied is xOld = (xNew * a) + (yNew * c) + e, yOld = (xNew * b) + (yNew * d) + f
+            // Hence to convert current touch coordinates relative to node coordinates we apply the same transformation but using the inverse of the transformation matrix
+            var newTouchX = (a*touchX) + (c*touchY) + e;
+            var newTouchY = (b*touchX) + (d*touchY) + f;
+            
+            // // if((touchX>=(thisGraph.nodes[i].x - consts.nodeRadius))&&(touchX<=(thisGraph.nodes[i].x + consts.nodeRadius))&&(touchX>=(thisGraph.nodes[i].y - consts.nodeRadius))&&(touchX<=(thisGraph.nodes[i].y + consts.nodeRadius))){
+            // // var transformedTouchX = transform("translate("+touchX+","+touchY+")");            
+            // // var xOffset = document.getElementById("svgid").getBoundingClientRect().left;
+            // // var yOffset = document.getElementById("svgid").getBoundingClientRect().top;
+
+            // // if(thisGraph.edges.length>=1){
+            // // if(thisGraph.state.mouseDownNode==thisGraph.nodes[1]){
+            // // if(i!==0){
+            // //   console.log("yo");
+            // //   xOffset = 0;
+            // //   yOffset = 0;
+            // // }
+            
+            // touchX = touchX + xOffset;
+            // touchY = touchY - yOffset;
+            
+            // // console.log(d3.transform(d3.select(thisGraph.nodes[i].parentNode).attr("transform")).translate);
+            // // console.log(thisGraph.nodes[i].node());
+            // // if((touchX>=(thisGraph.nodes[i].x + 11 - 50))&&(touchX<=(thisGraph.nodes[i].x + 3 + 50))&&(Math.abs(touchY)>=(thisGraph.nodes[i].y - 5 - 50))&&(Math.abs(touchY)<=(thisGraph.nodes[i].y - 15 + 50))){
+            // if(((touchX>=(thisGraph.nodes[i].x + 11 - 50))&&(touchX<=(thisGraph.nodes[i].x + 3 + 50))&&(Math.abs(touchY)>=(thisGraph.nodes[i].y - 5 - 50))&&(Math.abs(touchY)<=(thisGraph.nodes[i].y - 15 + 50)))||(((touchX-xOffset)>=(thisGraph.nodes[i].x + 11 - 50))&&((touchX-xOffset)<=(thisGraph.nodes[i].x + 3 + 50))&&(Math.abs(touchY+yOffset)>=(thisGraph.nodes[i].y - 5 - 50))&&(Math.abs(touchY+yOffset)<=(thisGraph.nodes[i].y - 15 + 50)))){
+            // if((touchX>=(thisGraph.nodes[i].x - 50))&&(touchX<=(thisGraph.nodes[i].x + 50))&&(touchY>=thisGraph.nodes[i].y - 50)&&(touchY<=(thisGraph.nodes[i].y + 50))){
+              
+            // Since node radius is 50 we account for that while trying to check for overlap between touch coordinates and node area
+            // mouseover functionality
+            if((newTouchX >= -50)&&(newTouchX <= 50)&&(newTouchY >= -50)&&(newTouchY <= 50)){                                          
+              // console.log(d3.select(document.getElementsByTagName(thisGraph.nodes[i])));
+              // turns node that is hovered over to blue
+              d3.select(document.getElementsByClassName("conceptG")[i]).classed(const04, true);
+              // d3.select(this).classed(const04, true);            
+            }
+            // mouseout functionality
+            else{
+              // when touch is moved outside node turns formerly hovered blue node to pink
+              d3.select(document.getElementsByClassName("conceptG")[i]).classed(const04, false);
+            }
+          }
+        }
+      }, false);
+
+      // svg.on("touchstart", function(d){alert("hello3");thisGraph.svgMouseDown.call(thisGraph, d);});
+      // svg.on("touchstart", function(d){thisGraph.updateGraph();});
+      // svg.on("touchstart",
+
+      //   function(){
+      //     // alert("hey4");
+      //     console.log("yolo1");
+      //     // d3TouchArray = d3.touches(this);
+      //     // console.log(d3TouchArray);
+      //     var touches = event.changedTouches,
+      //         first = touches[0],
+      //         type = "mousedown";
+      //     console.log(first.screenX);
+      //     // initMouseEvent(type, canBubble, cancelable, view, clickCount, 
+      //     //                screenX, screenY, clientX, clientY, ctrlKey, 
+      //     //                altKey, shiftKey, metaKey, button, relatedTarget);
+
+      //     var simulatedEvent = document.createEvent("MouseEvent");
+      //     simulatedEvent.initMouseEvent(type, true, true, window, 1, 
+      //                                   first.pageX, first.pageY, 
+      //                                   first.pageX, first.pageY, false, 
+      //                                   false, false, false, 0/*left*/, null);
+
+      //     first.target.dispatchEvent(simulatedEvent);
+      //     event.preventDefault();
+      //   }, false
+      // );
+      svg.on("mouseup", function(d){console.log("yo2"); thisGraph.svgMouseUp.call(thisGraph, d);});
+      // svg.on("touchend", function(d){
+      //   // var length = thisGraph.nodes.length;
+      //   // for( var i = 0; i < length; i++){
+      //     console.log("success2");
+      //     console.log(document.getElementsByClassName("connect-node"));
+      //     if(document.getElementsByClassName("connect-node")){
+      //       thisGraph.svgMouseUp.call(thisGraph, d3.select(document.getElementsByClassName("connect-node")[0]));
+      //       event.preventDefault();  
+      //     }
+      //   // }          
+      // });
+      // svg.on("touchend", 
+      //   function(){
+      //     // alert("hey6");
+      //     console.log("yolo2");
+      //     // console.log(d3.touches(this));
+      //     var touches = event.changedTouches,
+      //         first = touches[0],
+      //         type = "mouseup";
+      //     // initMouseEvent(type, canBubble, cancelable, view, clickCount, 
+      //     //                screenX, screenY, clientX, clientY, ctrlKey, 
+      //     //                altKey, shiftKey, metaKey, button, relatedTarget);
+
+      //     console.log(first.clientX);
+      //     var simulatedEvent = document.createEvent("MouseEvent");
+      //     simulatedEvent.initMouseEvent(type, true, true, window, 1, 
+      //                                   first.pageX, first.pageY, 
+      //                                   first.pageX, first.pageY, false, 
+      //                                   false, false, false, 0/*left*/, null);
+
+      //     first.target.dispatchEvent(simulatedEvent);
+      //     event.preventDefault();
+      //   }, false
+      // );
 
       // used for graph resizing on scrolling, but removed to implement scrollbar
 
       // listen for dragging
       var dragSvg = d3.behavior.zoom()
             .on("zoom", function(){
-              if (d3.event.sourceEvent.shiftKey){
+              // shiftkey event change
+              if (d3.event.sourceEvent.mousedown){
                 // TODO  the internal d3 state is still changing
                 return false;
               } else{
@@ -147,7 +340,8 @@ Template.workflow.onRendered(function(){
               if (ael){
                 ael.blur();
               }
-              if (!d3.event.sourceEvent.shiftKey) d3.select('body').style("cursor", "move");
+              // shiftkey event change
+              if (!d3.event.sourceEvent.mousedown) d3.select('body').style("cursor", "move");
             })
             .on("zoomend", function(){
               d3.select('body').style("cursor", "auto");
@@ -156,8 +350,26 @@ Template.workflow.onRendered(function(){
       svg.call(dragSvg).on("dblclick.zoom", null);
 
       // listen for resize
-      window.onresize = function(){thisGraph.updateWindow(svg);};
-
+      window.onresize = function(){
+        // the if statement has been added to prevent disappearing nodes and node name input forms on mobile devices when created toward borders of svg canvas
+        if(svg.selectAll("foreignObject")[0][0]==undefined){
+          thisGraph.updateWindow(svg, boundingBox);
+        }
+      };
+      // delete button for nodes and edges for mobile users
+      d3.select("#delete-graph-element").on("click", function(){
+        console.log("yo");
+        // simulates the pressing of delete key
+        var eventObj = document.createEventObject ? document.createEventObject() : document.createEvent("Events");
+        if(eventObj.initEvent){
+          eventObj.initEvent("keydown", true, true);
+        }        
+        eventObj.keyCode = 46;
+        eventObj.which = 46;
+        document.dispatchEvent ? document.dispatchEvent(eventObj) : document.fireEvent("onkeydown", eventObj);
+        // simulates key up event so that future deletions can be made
+        thisGraph.state.lastKeyDown = -1;        
+      });
       // handle download data
       d3.select("#save-input").on("click", function(){
         var saveEdges = [];
@@ -736,15 +948,15 @@ Template.workflow.onRendered(function(){
       DELETE_KEY: 46,
       ENTER_KEY: 13,
       nodeRadius: 50
-    };
-
+    };    
     /* PROTOTYPE FUNCTIONS */
 
-    GraphCreator.prototype.dragmove = function(d) {
-      var thisGraph = this;
-      if (thisGraph.state.shiftNodeDrag){
+    GraphCreator.prototype.dragmove = function(d) {      
+      var thisGraph = this;      
+      if((this.state.selectedNode == d)&&(this.state.shiftNodeDrag)){                
         thisGraph.dragLine.attr('d', 'M' + d.x + ',' + d.y + 'L' + d3.mouse(thisGraph.svgG.node())[0] + ',' + d3.mouse(this.svgG.node())[1]);
-      } else{
+        // thisGraph.dragLine.attr('d', 'M' + d.x + ',' + d.y + 'L' + d3TouchArray[0][0] + ',' + d3TouchArray[0][1]);
+      } else if (this.state.shiftNodeDrag){        
         d.x += d3.event.dx;
         d.y +=  d3.event.dy;
         thisGraph.updateGraph();
@@ -798,7 +1010,8 @@ Template.workflow.onRendered(function(){
           nwords = words.length;
       var el = gEl.append("text")
             .attr("text-anchor","middle")
-            .attr("dy", "-" + (nwords-1)*7.5);
+            .attr("dy", "-" + (nwords-1)*7.5)
+            .style("fill-opacity",1);
 
       for (var i = 0; i < words.length; i++) {
         var tspan = el.append('tspan').text(words[i]);
@@ -985,15 +1198,19 @@ Template.workflow.onRendered(function(){
 
     // mousedown on node
     GraphCreator.prototype.circleMouseDown = function(d3node, d){
+      console.log("hello1");
       var thisGraph = this,
           state = thisGraph.state;
       d3.event.stopPropagation();
       state.mouseDownNode = d;
-      if (d3.event.shiftKey){
-        state.shiftNodeDrag = d3.event.shiftKey;
+      // shiftkey change
+      if (state.mouseDownNode){
+        state.shiftNodeDrag = state.mouseDownNode;
+        console.log(state.shiftNodeDrag);
+        console.log("hello2");
         // reposition dragged directed edge
         thisGraph.dragLine.classed('hidden', false)
-          .attr('d', 'M' + d.x + ',' + d.y + 'L' + d.x + ',' + d.y);
+         .attr('d', 'M' + d.x + ',' + d.y + 'L' + d.x + ',' + d.y);
         return;
       }
     };
@@ -1002,7 +1219,7 @@ Template.workflow.onRendered(function(){
     GraphCreator.prototype.changeTextOfNode = function(d3node, d){
       var thisGraph= this,
           consts = thisGraph.consts,
-          htmlEl = d3node.node();
+          htmlEl = d3node.node();          
       d3node.selectAll("text").remove();
       var nodeBCR = htmlEl.getBoundingClientRect(),
           curScale = nodeBCR.width/consts.nodeRadius,
@@ -1013,26 +1230,48 @@ Template.workflow.onRendered(function(){
             .data([d])
             .enter()
             .append("foreignObject")
-            .attr("x", nodeBCR.left + placePad )
-            .attr("y", nodeBCR.top + placePad)
+            // .attr("x", nodeBCR.left + placePad )
+            // .attr("y", nodeBCR.top + placePad)
+            // changed to make input form appear at node location
+            .attr("x", d.x)
+            .attr("y", d.y)
             .attr("height", 2*useHW)
-            .attr("width", useHW)
-            .append("xhtml:p")
+            // .attr("width", useHW)
+            // changed to make sure entire input form is displayed
+            .attr("width", "70%")
+            // .append("xhtml:p")
+            // uses form input for better mobile broswer compatibility
+            .append("xhtml:form")
+            .append("xhtml:input")
+            .attr("type", "text")
+            // .style("font-size", "40px")
             .attr("id", consts.activeEditId)
             .attr("contentEditable", "true")
-            .text(d.title)
+            .attr("placeholder", d.title)
+            .attr("background-color", "rgba(0,0,0,0.5)")
+            // .text(d.title)
+            // .on("touchstart", function(d){
+            //   d3.event.stopPropagation();
+            //   $(this).focus();
+            // })
             .on("mousedown", function(d){              
               d3.event.stopPropagation();
             })
+            // .on("touchstart", function(d){              
+            //   d3.event.stopPropagation();
+            // })
             .on("keydown", function(d){
+              // alert("yo");
               d3.event.stopPropagation();
-              if (d3.event.keyCode == consts.ENTER_KEY && !d3.event.shiftKey){
+              // shiftkey event change
+              if (d3.event.keyCode == consts.ENTER_KEY && !thisGraph.state.graphMouseDown){
                 this.blur();
               }
             })
             .on("blur", function(d){
               // storing text in textbox as node title
-              d.title = this.textContent;
+              // d.title = this.textContent;
+              d.title = document.getElementById("active-editing").value;              
               // thisGraph.insertTitleLinebreaks(d3node, d.title);
               // updating node id so as to not coincide with previously saved node ids
               while(Nodes.find({'d3id': d.id}).fetch().length!==0){
@@ -1066,23 +1305,30 @@ Template.workflow.onRendered(function(){
                   thisGraph.insertTitleLinebreaks(d3node, d.title);
                   Session.set('nodeSubmitErrors', {});
                 }
-              });          
-              d3.select(this.parentElement).remove();
+              });
+              // this.parentElement refers to form. Following line removes forms parentElement i.e. foreignObject (so that future nodes cam be added)         
+              d3.select((this.parentElement).parentElement).remove();
             });
       return d3txt;
     };
 
     // mouseup on nodes
-    GraphCreator.prototype.circleMouseUp = function(d3node, d){
+    GraphCreator.prototype.circleMouseUp = function(d3node, d){      
       var thisGraph = this,
           state = thisGraph.state,
           consts = thisGraph.consts;
       // reset the states
+      console.log(state.shiftNodeDrag);
       state.shiftNodeDrag = false;    
       d3node.classed(consts.connectClass, false);
       
+      d3.select(document.getElementsByClassName("connect-node")[0]).classed(consts.connectClass, false);
+
       var mouseDownNode = state.mouseDownNode;
-      
+      console.log(mouseDownNode);
+      // var mouseDownNode = thisGraph.nodes[1];
+      console.log(d3node[0][0]);
+      console.log(d);
       if (!mouseDownNode) return;
 
       thisGraph.dragLine.classed("hidden", true);
@@ -1094,7 +1340,7 @@ Template.workflow.onRendered(function(){
         var sourceId = Nodes.find({'d3id': mouseDownNode.id}).fetch()[0]._id;
         var targetId = Nodes.find({'d3id': d.id}).fetch()[0]._id;
         Nodes.update(sourceId, {$push:{targets: {d3id: d.id}}});
-        Nodes.update(targetId, {$push:{sources: {d3id: mouseDownNode.id}}});
+        Nodes.update(targetId, {$push:{sources: {d3id: mouseDownNode.id}}});        
         
         // we're in a different node: create new edge for mousedown edge and add to graph
         // stores source node, target node, and edge id of edge    
@@ -1173,7 +1419,8 @@ Template.workflow.onRendered(function(){
 
           // checking which rules have been checked for current edge when form submit button is clicked
           if(document.getElementById("formSubmit")!==null)
-          document.getElementById("formSubmit").onclick = function(){
+          // document.getElementById("formSubmit").on('click touchstart', function(){
+            document.getElementById("formSubmit").onclick = function(){
             sessionStorage.checkCountString = "";
             // counts number of checkboxes that have been checked
             var checkCount = $("input:checkbox:checked").length;
@@ -1236,8 +1483,9 @@ Template.workflow.onRendered(function(){
             .attr("id","form2")
             .attr("style","display:block")
             .html(sessionStorage.priorityForm);
-            if(document.getElementById("formSubmit2")!==null)
-            document.getElementById("formSubmit2").onclick = function(){
+            if(document.getElementById("formSubmit2")!==null)              
+            // document.getElementById("formSubmit2").on('click touchstart', function(){
+              document.getElementById("formSubmit2").onclick = function(){
               sessionStorage.priorityCountString = "";
               // counts number of checkboxes that have been checked
               var checkCount = $("input:checkbox:checked").length;
@@ -1264,28 +1512,34 @@ Template.workflow.onRendered(function(){
           };
           thisGraph.updateGraph();
         }
-      } else{
+      } 
+      else{
         // we're in the same node
         if (state.justDragged) {
+          console.log("yo");
           // dragged, not clicked
           state.justDragged = false;
-        } else{
+        } 
+        else{
           // clicked, not dragged (occurs only when rule or priority forms for another edge are not active)
-          if ((d3.event.shiftKey)&&(document.getElementById("form1")==null)&&(document.getElementById("form2")==null)&&(svg.selectAll("foreignObject")[0][0]==undefined)){
-            // shift-clicked node: edit text content
+          // shiftkey event change
+          if ((thisGraph.state.graphMouseDown)&&(document.getElementById("form1")==null)&&(document.getElementById("form2")==null)&&(svg.selectAll("foreignObject")[0][0]==undefined)){
+            // shift-clicked node: edit text content            
             var d3txt = thisGraph.changeTextOfNode(d3node, d);
             var txtNode = d3txt.node();
             thisGraph.selectElementContents(txtNode);
             txtNode.focus();
-          } else{            
-            if (state.selectedEdge){
+          } 
+          else{            
+            if (state.selectedEdge){              
               thisGraph.removeSelectFromEdge();
             }
             var prevNode = state.selectedNode;            
             
-            if (!prevNode || prevNode.id !== d.id){
+            if (!prevNode || prevNode.id !== d.id){              
               thisGraph.replaceSelectNode(d3node, d);
-            } else{
+            } 
+            else{              
               thisGraph.removeSelectFromNode();
             }
           }
@@ -1297,7 +1551,7 @@ Template.workflow.onRendered(function(){
     }; // end of circles mouseup
 
     // mousedown on main svg
-    GraphCreator.prototype.svgMouseDown = function(){
+    GraphCreator.prototype.svgMouseDown = function(){      
       if(nodeInsertSuccess=false){
         this.state.graphMouseDown = false;
         d3.event.stopPropagation();
@@ -1307,7 +1561,7 @@ Template.workflow.onRendered(function(){
     };
 
     // mouseup on main svg
-    GraphCreator.prototype.svgMouseUp = function(){
+    GraphCreator.prototype.svgMouseUp = function(){      
       var thisGraph = this,
           state = thisGraph.state;
       if (state.justScaleTransGraph) {
@@ -1315,10 +1569,15 @@ Template.workflow.onRendered(function(){
         state.justScaleTransGraph = false;
       }
       // creates new node button ensures that rule or priority forms for another edge are not active 
-      else if ((state.graphMouseDown)&&(d3.event.shiftKey)&&(document.getElementById("form1")==null)&&(document.getElementById("form2")==null)&&(svg.selectAll("foreignObject")[0][0]==undefined)){
+      // shiftkey event change          
+      else if ((state.graphMouseDown)&&(document.getElementById("form1")==null)&&(document.getElementById("form2")==null)&&(svg.selectAll("foreignObject")[0][0]==undefined)){
         // clicked not dragged from svg        
         var xycoords = d3.mouse(thisGraph.svgG.node()),
             d = {id: thisGraph.idct++, title: "Enter Ad Name", x: xycoords[0], y: xycoords[1]};
+            // console.log(d3TouchArray);
+            // console.log(d3.mouse(thisGraph.svgG.node())[0]);
+            // console.log(d3.mouse(thisGraph.svgG.node())[1]);
+            // var d = {id: thisGraph.idct++, title: "Enter Ad Name", x: d3TouchArray[0][0], y: d3TouchArray[0][1]};                  
         thisGraph.nodes.push(d);
         thisGraph.updateGraph();
         // make title of text immediently editable
@@ -1328,7 +1587,7 @@ Template.workflow.onRendered(function(){
             txtNode = d3txt.node();
         thisGraph.selectElementContents(txtNode);
         txtNode.focus();
-      } else if (state.shiftNodeDrag){
+      } else if (state.shiftNodeDrag){        
         // dragged from node
         state.shiftNodeDrag = false;
         thisGraph.dragLine.classed("hidden", true);
@@ -1337,21 +1596,21 @@ Template.workflow.onRendered(function(){
     };
 
     // keydown on main svg
-    GraphCreator.prototype.svgKeyDown = function() {
+    GraphCreator.prototype.svgKeyDown = function() {      
       var thisGraph = this,
           state = thisGraph.state,
-          consts = thisGraph.consts;
+          consts = thisGraph.consts;      
       // make sure repeated key presses don't register for each keydown
       if(state.lastKeyDown !== -1) return;
 
-      state.lastKeyDown = d3.event.keyCode;
+      state.lastKeyDown = d3.event.keyCode;      
       var selectedNode = state.selectedNode,
           selectedEdge = state.selectedEdge;
       switch(d3.event.keyCode) {
       case consts.BACKSPACE_KEY:
       case consts.DELETE_KEY:
         d3.event.preventDefault();
-        if (selectedNode){
+        if (selectedNode){          
           // if node is selected and subsequently deleted, removes foreign object text box to edit node title once node is deleted
           d3.select("foreignObject").remove();
           thisGraph.nodes.splice(thisGraph.nodes.indexOf(selectedNode), 1);
@@ -1422,12 +1681,11 @@ Template.workflow.onRendered(function(){
     };
 
     // call to propagate changes to graph
-    GraphCreator.prototype.updateGraph = function(){
-      
+    GraphCreator.prototype.updateGraph = function(){            
       var thisGraph = this,
           consts = thisGraph.consts,
           state = thisGraph.state;
-      
+      var lastMove = 0;
       thisGraph.paths = thisGraph.paths.data(thisGraph.edges, function(d){
         return String(d.source.id) + "+" + String(d.target.id);
       });
@@ -1473,19 +1731,51 @@ Template.workflow.onRendered(function(){
             .append("g");
       newGs.classed(consts.circleGClass, true)
         .attr("transform", function(d){return "translate(" + d.x + "," + d.y + ")";})
-        .on("mouseover", function(d){        
-          if (state.shiftNodeDrag){
-            d3.select(this).classed(consts.connectClass, true); 
-          }
-        })
+        .on("mouseover", function(d){
+            d3.select(this).classed(consts.connectClass, true);           
+        })        
         .on("mouseout", function(d){
+          console.log("hey2");
           d3.select(this).classed(consts.connectClass, false);
-        })
+        })        
         .on("mousedown", function(d){
+          console.log(d);
+          console.log("arvind");
           thisGraph.circleMouseDown.call(thisGraph, d3.select(this), d);
         })
+        // enables proper dragging on mobile (touch)
+        .on("touchstart", function(d){          
+          console.log(d);
+          thisGraph.circleMouseDown.call(thisGraph, d3.select(this), d);
+          // prevents subsequent mousedown event from triggering a circlemousedown call again
+          event.preventDefault();
+        })
         .on("mouseup", function(d){
+          console.log(d);
           thisGraph.circleMouseUp.call(thisGraph, d3.select(this), d);
+        })
+        // enables proper dragging on mobile (touch)
+        .on("touchend", function(d){
+          // removes blue color from hovered over node in mobile - enabling better edge drawings
+          if(document.getElementsByClassName("connect-node").length==1){
+            // finds hovered over node and calls circlemouseup on it
+            var length = thisGraph.nodes.length;
+            for(var i = 0; i < length; i++){
+              if(thisGraph.nodes[i] == d3.select(document.getElementsByClassName("connect-node")[0]).data()[0]){
+                thisGraph.circleMouseUp.call(thisGraph, d3.select(this), thisGraph.nodes[i]);
+              }
+            }
+            // console.log(d3.select(document.getElementsByClassName("connect-node")[0])[0][0]);
+            // console.log(d3.select(cruise).data(function(d){console.log(d);}));
+            // console.log(document.getElementsByClassName("connect-node")[0].getAttributeNode("data"));
+            // thisGraph.circleMouseUp.call(thisGraph, thisGraph.nodes[1], d);            
+            // thisGraph.circleMouseUp.call(thisGraph, d, d3.select(document.getElementsByClassName("connect-node")[0]));            thisGraph.circleMouseUp.call(thisGraph, d3.select(this), thisGraph.nodes[1]);
+          }
+          else{
+            thisGraph.circleMouseUp.call(thisGraph, d3.select(this), d);
+          }
+          // prevents subsequent mousedown event from triggering a circlemousedown call again
+          event.preventDefault();          
         })
         .call(thisGraph.drag);
 
@@ -1512,6 +1802,7 @@ Template.workflow.onRendered(function(){
         .attr("contentEditable", "true")
         .attr("font-family", "Arial, Helvetica, sans-serif")
         .attr("fill", "Red")
+        .style("fill-opacity", 1)
         .style("font", "normal 20px Arial")
         .attr("x", function(d) {
         if (d.target.x > d.source.x) {
@@ -1573,6 +1864,7 @@ Template.workflow.onRendered(function(){
         .attr("contentEditable", "true")
         .attr("font-family", "Arial, Helvetica, sans-serif")
         .attr("fill", "Red")
+        .style("fill-opacity", 1)
         .style("font", "normal 20px Arial")
         .attr("x", function(d) {
         if (d.target.x > d.source.x) {
@@ -1628,12 +1920,33 @@ Template.workflow.onRendered(function(){
         .attr("transform", "translate(" + d3.event.translate + ") scale(" + d3.event.scale + ")"); 
     };
 
-    GraphCreator.prototype.updateWindow = function(svg){
+    GraphCreator.prototype.updateWindow = function(svg, boundingBox){      
       var docEl = document.documentElement,
           bodyEl = document.getElementsByTagName('body')[0];
       var x = window.innerWidth || docEl.clientWidth || bodyEl.clientWidth;
       var y = window.innerHeight|| docEl.clientHeight|| bodyEl.clientHeight;
-      svg.attr("width", x).attr("height", y);
+      // console.log(window.innerWidth);
+      // console.log(docEl.clientWidth);
+      // console.log(bodyEl.clientWidth);
+      // console.log(x);
+      // console.log(window.innerHeight);
+      // console.log(docEl.clientHeight);
+      // console.log(bodyEl.clientHeight);
+      // console.log(y);
+      // console.log(document.getElementById("svgid").top);
+      // console.log(document.getElementById("svgid").left);
+      svg.attr("viewBox", "0 0 " + x + " " + y);
+      // svg.attr("width", x).attr("height", y);
+      // .attr("viewBox", "0 0 " + x + " " + y);
+      // since svg width and height may change depending on device screen size, the dimensions of boundary box, i.e. black rectangle surrounding svg canvas, is set to take on the dimensions taken by the svg canvas
+      bBox = document.getElementById("svgid").getBoundingClientRect();
+      // console.log(bBox);
+      // alert(bBox.width);
+      // alert(x);
+      // alert(bBox.height);
+      // alert(y);
+      // boundingBox.attr("width", bBox.width).attr("height", bBox.height);
+      boundingBox.attr("width", x).attr("height", y);
     };
 
 
@@ -1641,8 +1954,12 @@ Template.workflow.onRendered(function(){
     /**** MAIN ****/
 
     // warn the user when leaving
-    window.onbeforeunload = function(){
-      return "Make sure to save your graph locally before leaving :-)";
+    // window.onbeforeunload = function(){
+    //   return "Make sure to save your graph locally before leaving";
+    // };
+
+    window.onerror = function(error){
+      alert(error);
     };      
 
     var docEl = document.documentElement,
@@ -1666,21 +1983,67 @@ Template.workflow.onRendered(function(){
     // binds svg to alignment div
     var svg = d3.select("#svg-aligner").append("svg")
           // sets width and height of svg canvas
-          .attr("width", 1100)
-          .attr("height", 2000);
+          // .attr("width", 1100)
+          // .attr("height", 2000)
+          // .attr("width", width)
+          // .attr("height", height)
+          //responsive SVG needs these 2 attributes and no width and height attr
+          .attr("preserveAspectRatio", "xMinYMin meet")
+          .attr("viewBox", "0 0 " + width + " " + height)
+          //class to make it responsive
+          .classed("svg-content-responsive", true) 
+          .attr("id", "svgid")
+          // .style("fill", "greenyellow")
+          .style("fill-opacity", 0.01);
+    // since svg width and height may change depending on device screen size, the dimensions of boundary box, i.e. black rectangle surrounding svg canvas, is set to take on the dimensions taken by the svg canvas
+    var bBox = document.getElementById("svgid").getBoundingClientRect();
+    // console.log(bBox);
+    // console.log(bBox.width);
+    // console.log(document.getElementById("svgid").width);
+    // console.log(document.body.getBoundingClientRect());
+    // console.log(document.getElementById("svgid").x);
+    // console.log(document.getElementById("svgid").y);
     // draws svg boundary
-    svg.append("rect")
-      .attr("x", 0)
-      .attr("y", 0)      
-      .attr("width", 1100)
-      .attr("height", 2000)
+    var boundingBox = svg.append("rect")
+      // .attr("x", 0)
+      // .attr("y", 0)      
+      // .attr("width", bBox.width)      
+      // .attr("height", bBox.height)
+      .attr("width", width)      
+      .attr("height", height)
       .style("stroke", 'black')
-      .style("stroke-width", 1)
-      .style("fill", "none");
+      .style("stroke-width", 1);
+      // .style("fill", "greenyellow")
+      // .style("fill-opacity", 0.5);
     
-    var graph = new GraphCreator(svg, nodes, edges);
+    var graph = new GraphCreator(svg, nodes, edges, boundingBox);
         graph.setIdCt(0);
     graph.updateGraph();
+// provides for better viewing on mobile
+    $(document).ready(function (){
+      if (/iPhone/.test(navigator.userAgent) && !window.MSStream){
+        $(document).on("focus", "input, textarea, select", function(){
+          $('meta[name=viewport]').remove();
+          $('head').append('<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">');
+          // alert("hi1");
+        });
+        $(document).on("blur", "input, textarea, select", function(){
+          $('meta[name=viewport]').remove();
+          $('head').append('<meta name="viewport" content="width=device-width, initial-scale=1">');
+          // alert("hi2");
+        });
+      }
+    })    
+    // $('body').bind('touchstart', function() {});
+    // $(document).ready(function() {
+    //   if(!shiftNodeDrag){
+    //     $('.hover').bind('touchstart touchend', function(e) {
+    //       console.log("yo");
+    //       e.preventDefault();
+    //       $(this).toggleClass('hover_effect');
+    //     });
+    //   }
+    // });
     /** MAIN SVG **/
     // var svg = d3.select("body").append("svg")
     //       .attr("width", width)
@@ -1747,5 +2110,5 @@ Template.workflow.onDestroyed(function(){
     Edges.update(id, {$set:{'priority': oldPriority}});
   }
   // prompts workflow window to unload, preventing image from showing on other pages
-  open(Router.current().route.path(), '_self').close();
+  open(Router.current().route.path(), '_self')  .close();
 });
